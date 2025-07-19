@@ -4,9 +4,16 @@ import (
 	"MicroShopik/configs"
 	_ "MicroShopik/docs"
 	"MicroShopik/internal/controllers"
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
@@ -38,14 +45,11 @@ func main() {
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
 
 	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal("error db connect: ", err)
-	}
-	defer db.Close()
 
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		log.Fatal("error pinging db: ", err)
+	if db != nil {
+		if err := db.Ping(); err != nil {
+			log.Fatal("error pinging db: ", err)
+		}
 	}
 
 	e := echo.New()
@@ -56,4 +60,22 @@ func main() {
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	e.Logger.Fatal(e.Start(":8080"))
+
+	go func() {
+		if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			e.Logger.Fatal("shutting down server:", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+	<-quit
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := e.Shutdown(ctx); err != nil {
+		e.Logger.Fatal(err)
+	}
+
 }
