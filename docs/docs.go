@@ -66,7 +66,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Role"
+                                "$ref": "#/definitions/domain.Role"
                             }
                         }
                     }
@@ -92,7 +92,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.User"
+                                "$ref": "#/definitions/domain.User"
                             }
                         }
                     }
@@ -117,7 +117,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     }
                 ],
@@ -125,7 +125,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "400": {
@@ -166,7 +166,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "400": {
@@ -218,7 +218,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Role"
+                                "$ref": "#/definitions/domain.Role"
                             }
                         }
                     },
@@ -236,7 +236,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "models.Role": {
+        "domain.Role": {
             "type": "object",
             "properties": {
                 "description": {
@@ -250,7 +250,7 @@ const docTemplate = `{
                 }
             }
         },
-        "models.User": {
+        "domain.User": {
             "type": "object",
             "properties": {
                 "balance": {

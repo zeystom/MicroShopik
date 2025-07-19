@@ -1,10 +1,15 @@
 package main
 
 import (
-	_ "MicroShopik/docs" // This is the generated swagger docs
+	"MicroShopik/configs"
+	_ "MicroShopik/docs"
 	"MicroShopik/internal/controllers"
+	"database/sql"
+	"fmt"
+	"log"
 
 	"github.com/labstack/echo/v4"
+	_ "github.com/lib/pq"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
@@ -24,6 +29,25 @@ import (
 // @BasePath /
 
 func main() {
+	cfg, err := configs.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal("error db connect: ", err)
+	}
+	defer db.Close()
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		log.Fatal("error pinging db: ", err)
+	}
+
 	e := echo.New()
 
 	helloCtrl := controllers.NewHelloController()
