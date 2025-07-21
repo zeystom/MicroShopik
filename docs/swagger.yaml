@@ -1,32 +1,35 @@
 basePath: /
 definitions:
-  models.Role:
+  domain.AuthRequest:
     properties:
-      description:
+      email:
         type: string
-      id:
-        type: integer
-      name:
+      password:
+        minLength: 8
         type: string
+    required:
+    - email
+    - password
     type: object
-  models.User:
+  domain.User:
     properties:
-      balance:
-        type: number
       created_at:
         type: string
       email:
         type: string
       id:
         type: integer
-      last_login:
-        type: string
-      pfp_url:
-        type: string
-      updated_at:
+      password:
+        minLength: 8
         type: string
       username:
+        maxLength: 25
+        minLength: 3
         type: string
+    required:
+    - email
+    - password
+    - username
     type: object
 host: localhost:8080
 info:
@@ -57,127 +60,62 @@ paths:
       summary: Say hello
       tags:
       - hello
-  /roles:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve all roles from the database
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Role'
-            type: array
-      summary: Get all roles
-      tags:
-      - roles
-  /users:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve all users from the database
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.User'
-            type: array
-      summary: Get all users
-      tags:
-      - users
+  /login:
     post:
       consumes:
       - application/json
-      description: Create a new user in the database
+      description: Login with email and password to receive a JWT token
       parameters:
-      - description: User object
+      - description: Login credentials
         in: body
-        name: user
+        name: credentials
         required: true
         schema:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/domain.AuthRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.User'
+            additionalProperties:
+              type: string
+            type: object
         "400":
           description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: Create a new user
+      summary: Login a user
       tags:
-      - users
-  /users/{id}:
-    get:
+      - auth
+  /register:
+    post:
       consumes:
       - application/json
-      description: Retrieve a user by their ID
+      description: Register a new user with username, email, and password
       parameters:
-      - description: User ID
-        in: path
-        name: id
+      - description: User object
+        in: body
+        name: user
         required: true
-        type: integer
+        schema:
+          $ref: '#/definitions/domain.User'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/domain.User'
         "400":
           description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get user by ID
+      summary: Register a new user
       tags:
-      - users
-  /users/{id}/roles:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve all roles for a specific user
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Role'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get user roles
-      tags:
-      - users
+      - auth
 swagger: "2.0"

@@ -41,59 +41,9 @@
                 }
             }
         },
-        "/roles": {
-            "get": {
-                "description": "Retrieve all roles from the database",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "roles"
-                ],
-                "summary": "Get all roles",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Role"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users": {
-            "get": {
-                "description": "Retrieve all users from the database",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Get all users",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.User"
-                            }
-                        }
-                    }
-                }
-            },
+        "/login": {
             "post": {
-                "description": "Create a new user in the database",
+                "description": "Login with email and password to receive a JWT token",
                 "consumes": [
                     "application/json"
                 ],
@@ -101,17 +51,17 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "auth"
                 ],
-                "summary": "Create a new user",
+                "summary": "Login a user",
                 "parameters": [
                     {
-                        "description": "User object",
-                        "name": "user",
+                        "description": "Login credentials",
+                        "name": "credentials",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/domain.AuthRequest"
                         }
                     }
                 ],
@@ -119,7 +69,10 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "400": {
@@ -134,9 +87,9 @@
                 }
             }
         },
-        "/users/{id}": {
-            "get": {
-                "description": "Retrieve a user by their ID",
+        "/register": {
+            "post": {
+                "description": "Register a new user with username, email, and password",
                 "consumes": [
                     "application/json"
                 ],
@@ -144,76 +97,25 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "auth"
                 ],
-                "summary": "Get user by ID",
+                "summary": "Register a new user",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
+                        "description": "User object",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.User"
+                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/{id}/roles": {
-            "get": {
-                "description": "Retrieve all roles for a specific user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Get user roles",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Role"
-                            }
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "400": {
@@ -230,26 +132,30 @@
         }
     },
     "definitions": {
-        "models.Role": {
+        "domain.AuthRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
             "properties": {
-                "description": {
+                "email": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
+                "password": {
+                    "type": "string",
+                    "minLength": 8
                 }
             }
         },
-        "models.User": {
+        "domain.User": {
             "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
             "properties": {
-                "balance": {
-                    "type": "number"
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -259,17 +165,14 @@
                 "id": {
                     "type": "integer"
                 },
-                "last_login": {
-                    "type": "string"
-                },
-                "pfp_url": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
+                "password": {
+                    "type": "string",
+                    "minLength": 8
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 25,
+                    "minLength": 3
                 }
             }
         }

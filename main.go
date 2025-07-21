@@ -4,6 +4,9 @@ import (
 	"MicroShopik/configs"
 	_ "MicroShopik/docs"
 	"MicroShopik/internal/controllers"
+	"MicroShopik/internal/middleware"
+	"MicroShopik/internal/repositories"
+	"MicroShopik/internal/services"
 	"context"
 	"database/sql"
 	"errors"
@@ -55,10 +58,30 @@ func main() {
 	e := echo.New()
 
 	helloCtrl := controllers.NewHelloController()
+	userRepo := repositories.NewUserRepository(db)
+	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
+	authCtrl := controllers.NewAuthController(authService)
 
+	authGroup := e.Group("")
+	authGroup.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	e.GET("/aboba", helloCtrl.SayHello)
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
+	e.POST("/register", authCtrl.Register)
+	e.POST("/login", authCtrl.Login)
 
+	// GetMe godoc
+	// @Summary Get current user info
+	// @Description Get the authenticated user's ID
+	// @Tags auth
+	// @Produce json
+	// @Success 200 {object} map[string]interface{}
+	// @Failure 401 {object} map[string]string
+	// @Security ApiKeyAuth
+	// @Router /me [get]
+	e.GET("/me", func(c echo.Context) error {
+		userID := c.Get("user_id").(int)
+		return c.JSON(200, map[string]interface{}{"user_id": userID})
+	})
 	e.Logger.Fatal(e.Start(":8080"))
 
 	go func() {
