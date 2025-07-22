@@ -22,7 +22,7 @@ func NewUserRepository(db *sql.DB) UserRepository {
 func (a *userRepository) Create(user *domain.User) error {
 
 	query := `INSERT INTO users (username, email, password, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
-	return a.db.QueryRow(query, user.Username, user.Email, user.Password).Scan(&user.ID)
+	return a.db.QueryRow(query, user.Username, user.Email, user.Password, user.CreatedAt).Scan(&user.ID)
 
 }
 func (a *userRepository) GetByEmail(email string) (*domain.User, error) {

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"MicroShopik/internal/domain"
+	"MicroShopik/internal/dto"
 	"MicroShopik/internal/services"
 	"net/http"
 
@@ -23,21 +24,33 @@ func NewAuthController(s services.AuthService) *AuthController {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param user body domain.User true "User object"
-// @Success 201 {object} domain.User
+// @Param user body dto.RegisterRequest true "User object"
+// @Success 201 {object} dto.UserResponse
 // @Failure 400 {object} map[string]string
 // @Router /register [post]
 func (a *AuthController) Register(c echo.Context) error {
-	var user domain.User
-	if err := c.Bind(&user); err != nil {
+	var req dto.RegisterRequest
+	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	err := a.authService.Register(&user)
-	if err != nil {
+	user := &domain.User{
+		Username: req.Username,
+		Email:    req.Email,
+		Password: req.Password,
+	}
+	if err := a.authService.Register(user); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	return c.JSON(http.StatusCreated, user)
+	resp := dto.UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return c.JSON(http.StatusCreated, resp)
+
 }
 
 // Login godoc
