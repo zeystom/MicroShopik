@@ -46,6 +46,10 @@ func (a *authService) Login(email, password string) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour))},
 	}
+
+	if err := a.userRepo.LastLoginUpdate(findUser.ID); err != nil {
+		return "", errors.New("internal server error")
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(a.jwtSecret))
 
