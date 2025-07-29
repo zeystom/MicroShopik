@@ -30,6 +30,11 @@ func (a *authService) Register(user *domain.User) error {
 	}
 	user.Password = string(hashed)
 	user.CreatedAt = time.Now()
+	err = a.userRepo.AssignRole(user.ID, "customer")
+	if err != nil {
+		return err
+	}
+
 	return a.userRepo.Create(user)
 }
 
@@ -41,8 +46,13 @@ func (a *authService) Login(email, password string) (string, error) {
 	if err := bcrypt.CompareHashAndPassword([]byte(findUser.Password), []byte(password)); err != nil {
 		return "", errors.New("incorrect credentials")
 	}
+	roles, err := a.userRepo.GetRoles(findUser.ID)
+	if err != nil {
+		return "", errors.New("failed to get user roles")
+	}
 	claims := domain.JWTClaims{
 		UserID: findUser.ID,
+		Roles:  roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour))},
 	}

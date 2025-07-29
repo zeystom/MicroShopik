@@ -18,6 +18,7 @@ type AuthRequest struct {
 	Password string `json:"password" validate:"required,min=8"`
 }
 type JWTClaims struct {
-	UserID int `json:"user_id"`
+	UserID int      `json:"user_id"`
+	Roles  []string `json:"roles"`
 	jwt.RegisteredClaims
 }

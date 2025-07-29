@@ -6,12 +6,6 @@ import (
 	"errors"
 )
 
-type UserRepository interface {
-	Create(user *domain.User) error
-	LastLoginUpdate(userID int) error
-	GetByEmail(email string) (*domain.User, error)
-}
-
 type userRepository struct {
 	db *sql.DB
 }
@@ -25,6 +19,44 @@ func (a *userRepository) Create(user *domain.User) error {
 	query := `INSERT INTO users (username, email, password, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
 	return a.db.QueryRow(query, user.Username, user.Email, user.Password, user.CreatedAt).Scan(&user.ID)
 
+}
+func (a *userRepository) AssignRole(userID int, roleName string) error {
+	query := `
+        INSERT INTO user_roles (user_id, role_id)
+        SELECT $1, id FROM roles WHERE name = $2
+        ON CONFLICT DO NOTHING
+    `
+	_, err := a.db.Exec(query, userID, roleName)
+	return err
+}
+
+func (a *userRepository) GetRoles(userID int) ([]string, error) {
+	query := `
+          SELECT roles.name
+          FROM roles
+          JOIN user_roles ON user_roles.role_id = roles.id
+          WHERE user_roles.user_id = $1
+      `
+	rows, err := a.db.Query(query, userID)
+
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
+	var roles []string
+	for rows.Next() {
+		var role string
+		if err := rows.Scan(&role); err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+	return roles, nil
 }
 
 func (a *userRepository) LastLoginUpdate(userID int) error {
