@@ -25,6 +25,7 @@ func JWTMiddleware(secret string) echo.MiddlewareFunc {
 
 			claims := token.Claims.(*domain.JWTClaims)
 			c.Set("user_id", claims.UserID)
+			c.Set("user", claims)
 			return next(c)
 		}
 	}
