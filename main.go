@@ -79,11 +79,6 @@ func main() {
 	// @Security ApiKeyAuth
 	// @Router /me [get]
 
-	//example of jwt roles mdlwr
-	//e.GET("/admin/users", adminController.GetUsers,
-	//	middleware.JWTMiddleware(secret),
-	//	middleware.RequireRole("admin"))
-	//
 	e.GET("/me", func(c echo.Context) error {
 		userID := c.Get("user_id").(int)
 		return c.JSON(200, map[string]interface{}{"user_id": userID})
