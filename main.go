@@ -4,13 +4,12 @@ import (
 	"MicroShopik/configs"
 	_ "MicroShopik/docs"
 	"MicroShopik/internal/controllers"
+	"MicroShopik/internal/database"
 	"MicroShopik/internal/middleware"
 	"MicroShopik/internal/repositories"
 	"MicroShopik/internal/services"
 	"context"
-	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +18,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	_ "github.com/lib/pq"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
@@ -44,21 +42,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=disable",
-		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
-
-	db, err := sql.Open("postgres", connStr)
-
-	if db != nil {
-		if err := db.Ping(); err != nil {
-			log.Fatal("error pinging db: ", err)
-		}
+	// Initialize GORM database
+	err = database.InitDB(cfg)
+	if err != nil {
+		log.Fatal("Failed to initialize database:", err)
 	}
 
 	e := echo.New()
 
 	helloCtrl := controllers.NewHelloController()
-	userRepo := repositories.NewUserRepository(db)
+	userRepo := repositories.NewUserRepository(database.GetDB())
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	authCtrl := controllers.NewAuthController(authService)
 
@@ -83,7 +76,6 @@ func main() {
 		userID := c.Get("user_id").(int)
 		return c.JSON(200, map[string]interface{}{"user_id": userID})
 	})
-	e.Logger.Fatal(e.Start(":8080"))
 
 	go func() {
 		if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -101,5 +93,4 @@ func main() {
 	if err := e.Shutdown(ctx); err != nil {
 		e.Logger.Fatal(err)
 	}
-
 }

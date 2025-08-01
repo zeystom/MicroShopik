@@ -4,9 +4,10 @@ import (
 	"MicroShopik/internal/domain"
 	"MicroShopik/internal/repositories"
 	"errors"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"time"
 )
 
 type AuthService interface {
@@ -30,12 +31,18 @@ func (a *authService) Register(user *domain.User) error {
 	}
 	user.Password = string(hashed)
 	user.CreatedAt = time.Now()
+
+	err = a.userRepo.Create(user)
+	if err != nil {
+		return err
+	}
+
 	err = a.userRepo.AssignRole(user.ID, "customer")
 	if err != nil {
 		return err
 	}
 
-	return a.userRepo.Create(user)
+	return nil
 }
 
 func (a *authService) Login(email, password string) (string, error) {

@@ -1,16 +1,20 @@
 package domain
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
 type User struct {
-	ID        int       `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Password  string    `json:"-"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        int            `json:"id" gorm:"primaryKey;autoIncrement"`
+	Username  string         `json:"username" gorm:"not null;uniqueIndex;size:100"`
+	Email     string         `json:"email" gorm:"not null;uniqueIndex;size:255"`
+	Password  string         `json:"-" gorm:"not null;size:255"`
+	Roles     []Role         `json:"roles" gorm:"many2many:user_roles;"`
+	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type AuthRequest struct {
