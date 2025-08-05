@@ -37,7 +37,7 @@ func (a *authService) Register(user *domain.User) error {
 		return err
 	}
 
-	err = a.userRepo.AssignRole(user.ID, "customer")
+	err = a.userRepo.AssignRole(user.ID, "buyer")
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (a *authService) Login(email, password string) (string, error) {
 	}
 
 	if err := a.userRepo.LastLoginUpdate(findUser.ID); err != nil {
-		return "", errors.New("internal server error")
+		return "", errors.New("failed to update last login time")
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(a.jwtSecret))

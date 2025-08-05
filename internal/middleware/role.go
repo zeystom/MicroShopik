@@ -2,8 +2,9 @@ package middleware
 
 import (
 	"MicroShopik/internal/domain"
-	"github.com/labstack/echo/v4"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 func RequireRole(role string) echo.MiddlewareFunc {

@@ -11,6 +11,46 @@ definitions:
     - email
     - password
     type: object
+  domain.Product:
+    properties:
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      disposable:
+        type: boolean
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      max_sales:
+        type: integer
+      price:
+        type: integer
+      seller_id:
+        type: integer
+      sold_count:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.Role:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
   dto.RegisterRequest:
     properties:
       email:
@@ -67,7 +107,7 @@ paths:
       summary: Say hello
       tags:
       - hello
-  /login:
+  /auth/login:
     post:
       consumes:
       - application/json
@@ -97,7 +137,7 @@ paths:
       summary: Login a user
       tags:
       - auth
-  /register:
+  /auth/register:
     post:
       consumes:
       - application/json
@@ -125,4 +165,308 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /products:
+    get:
+      description: Get a list of products with optional filtering and pagination
+      parameters:
+      - description: Filter by seller ID
+        in: query
+        name: seller_id
+        type: integer
+      - description: Filter by category ID
+        in: query
+        name: category_id
+        type: integer
+      - description: Minimum price filter
+        in: query
+        name: min_price
+        type: integer
+      - description: Maximum price filter
+        in: query
+        name: max_price
+        type: integer
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Filter by disposable status
+        in: query
+        name: disposable
+        type: boolean
+      - description: Search in title and description
+        in: query
+        name: search
+        type: string
+      - description: 'Number of items per page (default: 20)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of items to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Product'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get products with filters
+      tags:
+      - products
+  /products/{id}:
+    delete:
+      description: Delete a product (only by the seller)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a product
+      tags:
+      - products
+    get:
+      description: Get product details by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Product'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a product by ID
+      tags:
+      - products
+  /products/count:
+    get:
+      description: Get the count of products matching the filters
+      parameters:
+      - description: Filter by seller ID
+        in: query
+        name: seller_id
+        type: integer
+      - description: Filter by category ID
+        in: query
+        name: category_id
+        type: integer
+      - description: Minimum price filter
+        in: query
+        name: min_price
+        type: integer
+      - description: Maximum price filter
+        in: query
+        name: max_price
+        type: integer
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Filter by disposable status
+        in: query
+        name: disposable
+        type: boolean
+      - description: Search in title and description
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Count products with filters
+      tags:
+      - products
+  /roles:
+    get:
+      description: Get a list of all available roles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Role'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      description: Create a new role (admin only)
+      parameters:
+      - description: Role object
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Role'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Role'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      tags:
+      - roles
+  /roles/{name}:
+    get:
+      description: Get a specific role by name
+      parameters:
+      - description: Role name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Role'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      tags:
+      - roles
+  /users/{user_id}/roles:
+    get:
+      description: Get all roles assigned to a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      tags:
+      - roles
+  /users/{user_id}/roles/{role_name}:
+    post:
+      description: Assign a role to a specific user (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Role name
+        in: path
+        name: role_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      tags:
+      - roles
 swagger: "2.0"

@@ -9,11 +9,13 @@ import (
 
 type User struct {
 	ID        int            `json:"id" gorm:"primaryKey;autoIncrement"`
-	Username  string         `json:"username" gorm:"not null;uniqueIndex;size:100"`
-	Email     string         `json:"email" gorm:"not null;uniqueIndex;size:255"`
+	Username  string         `json:"username" gorm:"not null;uniqueIndex:uni_users_username;size:100"`
+	Email     string         `json:"email" gorm:"not null;uniqueIndex:uni_users_email;size:255"`
 	Password  string         `json:"-" gorm:"not null;size:255"`
 	Roles     []Role         `json:"roles" gorm:"many2many:user_roles;"`
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	LastLogin *time.Time     `json:"last_login"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 

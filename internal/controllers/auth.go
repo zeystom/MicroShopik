@@ -27,7 +27,7 @@ func NewAuthController(s services.AuthService) *AuthController {
 // @Param user body dto.RegisterRequest true "User object"
 // @Success 201 {object} dto.UserResponse
 // @Failure 400 {object} map[string]string
-// @Router /register [post]
+// @Router /auth/register [post]
 func (a *AuthController) Register(c echo.Context) error {
 	var req dto.RegisterRequest
 	if err := c.Bind(&req); err != nil {
@@ -62,7 +62,7 @@ func (a *AuthController) Register(c echo.Context) error {
 // @Param credentials body domain.AuthRequest true "Login credentials"
 // @Success 201 {object} map[string]string
 // @Failure 400 {object} map[string]string
-// @Router /login [post]
+// @Router /auth/login [post]
 func (a *AuthController) Login(c echo.Context) error {
 	var auth domain.AuthRequest
 	if err := c.Bind(&auth); err != nil {

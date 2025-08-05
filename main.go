@@ -42,7 +42,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Initialize GORM database
 	err = database.InitDB(cfg)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
@@ -50,31 +49,84 @@ func main() {
 
 	e := echo.New()
 
-	helloCtrl := controllers.NewHelloController()
 	userRepo := repositories.NewUserRepository(database.GetDB())
+	roleRepo := repositories.NewRoleRepository(database.GetDB())
+
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
+	roleService := services.NewRoleService(roleRepo, userRepo)
 	authCtrl := controllers.NewAuthController(authService)
+	roleCtrl := controllers.NewRoleController(roleService)
+	productRepo := repositories.NewProductRepository(database.GetDB())
+	productService := services.NewProductService(productRepo)
+	productCtrl := controllers.NewProductController(productService)
 
-	authGroup := e.Group("")
-	authGroup.Use(middleware.JWTMiddleware(cfg.JWTSecret))
-	e.GET("/aboba", helloCtrl.SayHello)
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
-	e.POST("/register", authCtrl.Register)
-	e.POST("/login", authCtrl.Login)
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(200, map[string]string{"status": "ok", "message": "MicroShopik API is running"})
+	})
 
-	// GetMe godoc
-	// @Summary Get current user info
-	// @Description Get the authenticated user's ID
-	// @Tags auth
-	// @Produce json
-	// @Success 200 {object} map[string]interface{}
-	// @Failure 401 {object} map[string]string
-	// @Security ApiKeyAuth
-	// @Router /me [get]
+	auth := e.Group("/auth")
+	auth.POST("/register", authCtrl.Register)
+	auth.POST("/login", authCtrl.Login)
 
-	e.GET("/me", func(c echo.Context) error {
+	products := e.Group("/products")
+	products.GET("", productCtrl.Find)
+	products.GET("/count", productCtrl.Count)
+	products.GET("/:id", productCtrl.GetById)
+	products.GET("/:id/available", productCtrl.IsAvailable)
+
+	productsAuth := e.Group("/products")
+	productsAuth.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	productsAuth.Use(middleware.RequireAnyRole("seller", "admin"))
+	productsAuth.POST("", productCtrl.Create)
+	productsAuth.PUT("/:id", productCtrl.Update)
+	productsAuth.DELETE("/:id", productCtrl.Delete)
+
+	roles := e.Group("/roles")
+	roles.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	roles.Use(middleware.RequireRole("admin"))
+	roles.GET("", roleCtrl.GetAll)
+	roles.GET("/:name", roleCtrl.GetByName)
+	roles.POST("", roleCtrl.Create)
+
+	users := e.Group("/users")
+	users.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	users.Use(middleware.RequireRole("admin"))
+	users.GET("/:user_id/roles", roleCtrl.GetUserRoles)
+	users.POST("/:user_id/roles/:role_name", roleCtrl.AssignRoleToUser)
+
+	sellerGroup := e.Group("/seller")
+	sellerGroup.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	sellerGroup.Use(middleware.RequireRole("seller"))
+	sellerGroup.GET("/products", func(c echo.Context) error {
 		userID := c.Get("user_id").(int)
-		return c.JSON(200, map[string]interface{}{"user_id": userID})
+		return c.JSON(200, map[string]interface{}{
+			"message": "Seller dashboard - you can manage your products here",
+			"user_id": userID,
+		})
+	})
+
+	adminGroup := e.Group("/admin")
+	adminGroup.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	adminGroup.Use(middleware.RequireRole("admin"))
+	adminGroup.GET("/dashboard", func(c echo.Context) error {
+		return c.JSON(200, map[string]interface{}{
+			"message": "Admin dashboard - you can manage all users and products",
+		})
+	})
+	adminGroup.GET("/users", func(c echo.Context) error {
+		return c.JSON(200, map[string]interface{}{
+			"message": "List all users (admin only)",
+		})
+	})
+
+	moderatorGroup := e.Group("/moderator")
+	moderatorGroup.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	moderatorGroup.Use(middleware.RequireAnyRole("admin", "moderator"))
+	moderatorGroup.GET("/reports", func(c echo.Context) error {
+		return c.JSON(200, map[string]interface{}{
+			"message": "View reports (admin or moderator)",
+		})
 	})
 
 	go func() {
