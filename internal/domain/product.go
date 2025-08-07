@@ -13,7 +13,7 @@ type Product struct {
 	Description string         `json:"description" gorm:"type:text"`
 	Price       int64          `json:"price" gorm:"not null"`
 	CategoryID  int            `json:"category_id" gorm:"not null"`
-	IsActive    bool           `json:"is_active" gorm:"default:true"`
+	Category    Category       `json:"category" gorm:"foreignKey:CategoryID;references:ID"`
 	Disposable  bool           `json:"disposable" gorm:"default:false"`
 	MaxSales    int            `json:"max_sales" gorm:"not null;default:0"`
 	SoldCount   int            `json:"sold_count" gorm:"not null;default:0"`

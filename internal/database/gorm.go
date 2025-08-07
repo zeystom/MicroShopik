@@ -28,6 +28,7 @@ func InitDB(cfg *configs.Config) error {
 		&domain.User{},
 		&domain.Product{},
 		&domain.Role{},
+		&domain.Category{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
