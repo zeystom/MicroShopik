@@ -59,6 +59,9 @@ func main() {
 	productRepo := repositories.NewProductRepository(database.GetDB())
 	productService := services.NewProductService(productRepo)
 	productCtrl := controllers.NewProductController(productService)
+	catRepo := repositories.NewCategoryRepository(database.GetDB())
+	catService := services.NewCategoryService(catRepo)
+	catCtrl := controllers.NewCategoryController(catService)
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 	e.GET("/health", func(c echo.Context) error {
@@ -68,6 +71,17 @@ func main() {
 	auth := e.Group("/auth")
 	auth.POST("/register", authCtrl.Register)
 	auth.POST("/login", authCtrl.Login)
+
+	cats := e.Group("/categories")
+	cats.GET("", catCtrl.GetAll)
+	cats.GET("/:id", catCtrl.GetById)
+
+	catsAdmin := e.Group("/categories")
+	catsAdmin.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	catsAdmin.Use(middleware.RequireRole("admin"))
+	catsAdmin.POST("", catCtrl.Create)
+	catsAdmin.PUT("/:id", catCtrl.Update)
+	catsAdmin.DELETE("/:id", catCtrl.Delete)
 
 	products := e.Group("/products")
 	products.GET("", productCtrl.Find)
