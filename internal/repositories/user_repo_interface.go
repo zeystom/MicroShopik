@@ -10,4 +10,5 @@ type UserRepository interface {
 	GetRoles(userID int) ([]string, error)
 	AssignRole(userID int, roleName string) error
 	GetByEmail(email string) (*domain.User, error)
+	GetByID(userID int) (*domain.User, error)
 }

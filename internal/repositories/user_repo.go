@@ -3,6 +3,7 @@ package repositories
 import (
 	"MicroShopik/internal/domain"
 	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -55,6 +56,18 @@ func (r *userRepository) GetByEmail(email string) (*domain.User, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
+		return nil, err
+	}
+	return &user, nil
+}
+func (r *userRepository) GetByID(userID int) (*domain.User, error) {
+	var user domain.User
+	err := r.db.Preload("Roles").Where("id = ?", userID).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("user not found: %w", err)
+		}
+
 		return nil, err
 	}
 	return &user, nil
