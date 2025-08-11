@@ -76,7 +76,6 @@ func (s *conversationService) Delete(id int) error {
 }
 
 func (s *conversationService) AddParticipant(conversationID, userID int) error {
-	// Check if user is already a participant
 	isParticipant, err := s.IsParticipant(conversationID, userID)
 	if err != nil {
 		return err

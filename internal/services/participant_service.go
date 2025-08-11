@@ -30,13 +30,11 @@ func NewParticipantService(pRepo repositories.ParticipantRepository, cRepo repos
 }
 
 func (s *participantService) Create(participant *domain.Participant) error {
-	// Validate conversation exists
 	_, err := s.conversationRepo.GetByID(participant.ConversationID)
 	if err != nil {
 		return errors.New("conversation not found")
 	}
 
-	// Check if user is already a participant
 	isParticipant, err := s.IsParticipant(participant.ConversationID, participant.UserID)
 	if err != nil {
 		return err
@@ -57,7 +55,6 @@ func (s *participantService) GetByUserID(userID int) ([]*domain.Participant, err
 }
 
 func (s *participantService) Delete(conversationID, userID int) error {
-	// Check if user is a participant
 	isParticipant, err := s.IsParticipant(conversationID, userID)
 	if err != nil {
 		return err

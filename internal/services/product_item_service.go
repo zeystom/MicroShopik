@@ -30,7 +30,6 @@ func NewProductItemService(piRepo repositories.ProductItemRepository, pRepo repo
 }
 
 func (s *productItemService) Create(productItem *domain.ProductItem) error {
-	// Validate product exists
 	_, err := s.productRepo.GetById(productItem.ProductID)
 	if err != nil {
 		return errors.New("product not found")
@@ -52,7 +51,6 @@ func (s *productItemService) GetAvailableByProductID(productID int) ([]*domain.P
 }
 
 func (s *productItemService) Update(productItem *domain.ProductItem) error {
-	// Validate product exists
 	_, err := s.productRepo.GetById(productItem.ProductID)
 	if err != nil {
 		return errors.New("product not found")
@@ -70,13 +68,11 @@ func (s *productItemService) MarkAsUsed(id int) error {
 }
 
 func (s *productItemService) CreateBulk(productID int, dataItems []string) error {
-	// Validate product exists
 	_, err := s.productRepo.GetById(productID)
 	if err != nil {
 		return errors.New("product not found")
 	}
 
-	// Create multiple product items
 	for _, data := range dataItems {
 		productItem := &domain.ProductItem{
 			ProductID: productID,

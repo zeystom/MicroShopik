@@ -34,13 +34,12 @@ func NewMessageService(mRepo repositories.MessageRepository, cRepo repositories.
 }
 
 func (s *messageService) Create(message *domain.Message) error {
-	// Validate conversation exists
+
 	_, err := s.conversationRepo.GetByID(message.ConversationID)
 	if err != nil {
 		return errors.New("conversation not found")
 	}
 
-	// If sender is specified, validate they are a participant
 	if message.SenderID != nil {
 		isParticipant, err := s.participantRepo.IsParticipant(message.ConversationID, *message.SenderID)
 		if err != nil {
@@ -51,7 +50,6 @@ func (s *messageService) Create(message *domain.Message) error {
 		}
 	}
 
-	// If order is specified, validate it exists
 	if message.OrderID != nil {
 		_, err := s.orderRepo.GetByID(*message.OrderID)
 		if err != nil {

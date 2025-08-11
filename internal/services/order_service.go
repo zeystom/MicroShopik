@@ -36,15 +36,13 @@ func NewOrderService(oRepo repositories.OrderRepository, piRepo repositories.Pro
 }
 
 func (s *orderService) Create(order *domain.Order) error {
-	// Validate customer exists
 	if order.CustomerID != nil {
-		_, err := s.userRepo.GetByEmail("") // We need a GetByID method, using placeholder for now
+		_, err := s.userRepo.GetByID(*order.CustomerID)
 		if err != nil {
 			return errors.New("customer not found")
 		}
 	}
 
-	// Validate product exists
 	if order.ProductID != nil {
 		_, err := s.productRepo.GetById(*order.ProductID)
 		if err != nil {
@@ -52,7 +50,6 @@ func (s *orderService) Create(order *domain.Order) error {
 		}
 	}
 
-	// Validate product item exists and is available
 	if order.ProductItemID != nil {
 		productItem, err := s.productItemRepo.GetByID(*order.ProductItemID)
 		if err != nil {
@@ -87,7 +84,6 @@ func (s *orderService) Delete(id int) error {
 }
 
 func (s *orderService) UpdateStatus(id int, status string) error {
-	// Validate status
 	validStatuses := []string{"pending", "completed", "refunded", "cancelled"}
 	isValid := false
 	for _, validStatus := range validStatuses {
@@ -117,14 +113,12 @@ func (s *orderService) ProcessOrder(orderID int) error {
 		return errors.New("order is not in pending status")
 	}
 
-	// Mark product item as used
 	if order.ProductItemID != nil {
 		if err := s.productItemRepo.MarkAsUsed(*order.ProductItemID); err != nil {
 			return err
 		}
 	}
 
-	// Update order status to complete
 	return s.orderRepo.UpdateStatus(orderID, "completed")
 }
 
@@ -134,7 +128,6 @@ func (s *orderService) CancelOrder(orderID int, customerID int) error {
 		return err
 	}
 
-	// Check if user is the customer
 	if order.CustomerID == nil || *order.CustomerID != customerID {
 		return errors.New("unauthorized to cancel this order")
 	}
