@@ -60,7 +60,7 @@ func (s *roleService) AssignRoleToUser(userID int, roleName string) error {
 }
 
 func (s *roleService) RemoveRoleFromUser(userID int, roleName string) error {
-	return errors.New("remove role functionality not implemented yet")
+	return s.userRepo.RemoveRole(userID, roleName)
 }
 
 func (s *roleService) GetUserRoles(userID int) ([]string, error) {

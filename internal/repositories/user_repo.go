@@ -29,6 +29,15 @@ func (r *userRepository) AssignRole(userID int, roleName string) error {
 	return r.db.Model(&domain.User{ID: userID}).Association("Roles").Append(&role)
 }
 
+func (r *userRepository) RemoveRole(userID int, roleName string) error {
+	var role domain.Role
+	if err := r.db.Where("name = ?", roleName).First(&role).Error; err != nil {
+		return err
+	}
+
+	return r.db.Model(&domain.User{ID: userID}).Association("Roles").Delete(&role)
+}
+
 func (r *userRepository) GetRoles(userID int) ([]string, error) {
 	var user domain.User
 	err := r.db.Preload("Roles").Where("id = ?", userID).First(&user).Error
@@ -71,4 +80,20 @@ func (r *userRepository) GetByID(userID int) (*domain.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) Delete(userID int) error {
+	var user domain.User
+	err := r.db.Where("id = ?", userID).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user not found")
+		}
+		return err
+	}
+	return r.db.Delete(&user).Error
+}
+func (r *userRepository) Update(user *domain.User) error {
+	return r.db.Save(user).Error
+
 }

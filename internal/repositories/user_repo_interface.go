@@ -9,6 +9,9 @@ type UserRepository interface {
 	LastLoginUpdate(userID int) error
 	GetRoles(userID int) ([]string, error)
 	AssignRole(userID int, roleName string) error
+	RemoveRole(userID int, roleName string) error
 	GetByEmail(email string) (*domain.User, error)
 	GetByID(userID int) (*domain.User, error)
+	Delete(userID int) error
+	Update(user *domain.User) error
 }
