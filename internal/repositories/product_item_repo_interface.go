@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"MicroShopik/internal/domain"
+	"gorm.io/gorm"
 )
 
 type ProductItemRepository interface {
@@ -12,4 +13,5 @@ type ProductItemRepository interface {
 	Update(productItem *domain.ProductItem) error
 	Delete(id int) error
 	MarkAsUsed(id int) error
+	MarkAsUsedTx(tx *gorm.DB, id int) error
 }

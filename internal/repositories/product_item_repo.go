@@ -62,3 +62,9 @@ func (r *productItemRepository) MarkAsUsed(id int) error {
 		Where("id = ?", id).
 		UpdateColumn("is_used", true).Error
 }
+
+func (r *productItemRepository) MarkAsUsedTx(tx *gorm.DB, id int) error {
+	return tx.Model(&domain.ProductItem{}).
+		Where("id = ?", id).
+		UpdateColumn("is_used", true).Error
+}

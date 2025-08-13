@@ -50,18 +50,73 @@ func main() {
 	e := echo.New()
 
 	userRepo := repositories.NewUserRepository(database.GetDB())
-	roleRepo := repositories.NewRoleRepository(database.GetDB())
-
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
-	roleService := services.NewRoleService(roleRepo, userRepo)
 	authCtrl := controllers.NewAuthController(authService)
+
+	roleRepo := repositories.NewRoleRepository(database.GetDB())
+	roleService := services.NewRoleService(roleRepo, userRepo)
 	roleCtrl := controllers.NewRoleController(roleService)
+
 	productRepo := repositories.NewProductRepository(database.GetDB())
 	productService := services.NewProductService(productRepo)
 	productCtrl := controllers.NewProductController(productService)
+
 	catRepo := repositories.NewCategoryRepository(database.GetDB())
 	catService := services.NewCategoryService(catRepo)
 	catCtrl := controllers.NewCategoryController(catService)
+
+	convRepo := repositories.NewConversationRepository(database.GetDB())
+
+	participantRepo := repositories.NewParticipantRepository(database.GetDB())
+	participantService := services.NewParticipantService(participantRepo, convRepo, userRepo)
+	convService := services.NewConversationService(convRepo, participantRepo, userRepo)
+
+	convCtrl := controllers.NewConversationController(convService)
+	participantCtrl := controllers.NewParticipantController(participantService)
+
+	pItemRepo := repositories.NewProductItemRepository(database.GetDB())
+	pItemService := services.NewProductItemService(pItemRepo, productRepo)
+	pItemCtrl := controllers.NewProductItemController(pItemService)
+
+	orderRepo := repositories.NewOrderRepository(database.GetDB())
+	orderService := services.NewOrderService(orderRepo, pItemRepo, productRepo, userRepo, convService)
+	orderCtrl := controllers.NewOrderController(orderService)
+
+	messageRepo := repositories.NewMessageRepository(database.GetDB())
+	messageService := services.NewMessageService(messageRepo, convRepo, participantRepo, orderRepo)
+	messageCtrl := controllers.NewMessageController(messageService)
+
+	orders := e.Group("/orders")
+	orders.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	orders.POST("", orderCtrl.Create)
+	orders.GET("", func(c echo.Context) error {
+		userID := c.Get("user_id").(int)
+		return orderCtrl.GetByCustomerID(c)
+	})
+	orders.GET("/:id", orderCtrl.GetByID)
+	orders.PUT("/:id", orderCtrl.Update)
+	orders.DELETE("/:id", orderCtrl.Delete)
+	orders.PUT("/:id/status", orderCtrl.UpdateStatus)
+	orders.POST("/:id/process", orderCtrl.ProcessOrder)
+	orders.POST("/:id/cancel/:customerID", orderCtrl.CancelOrder)
+
+	conversations := e.Group("/conversations")
+	conversations.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	conversations.POST("", convCtrl.Create)
+	conversations.GET("/:id", convCtrl.GetByID)
+	conversations.PUT("/:id", convCtrl.Update)
+	conversations.DELETE("/:id", convCtrl.Delete)
+	conversations.POST("/:id/participants/:userID", convCtrl.AddParticipant)
+	conversations.DELETE("/:id/participants/:userID", convCtrl.RemoveParticipant)
+
+	users := e.Group("/users")
+	users.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	users.GET("/:userID/conversations", convCtrl.GetByUserID)
+
+	messages := e.Group("/conversations/:conversationID/messages")
+	messages.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	messages.GET("", messageCtrl.GetByConversationID)
+	messages.POST("", messageCtrl.Create)
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 	e.GET("/health", func(c echo.Context) error {

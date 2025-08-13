@@ -12,6 +12,7 @@ type orderRepository struct {
 }
 
 func NewOrderRepository(db *gorm.DB) OrderRepository {
+
 	return &orderRepository{db: db}
 }
 
@@ -80,4 +81,14 @@ func (r *orderRepository) GetByProductID(productID int) ([]*domain.Order, error)
 		return nil, err
 	}
 	return orders, nil
+}
+
+func (r *orderRepository) BeginTx() *gorm.DB {
+	return r.db.Begin()
+}
+
+func (r *orderRepository) UpdateStatusTx(tx *gorm.DB, id int, status string) error {
+	return tx.Model(&domain.Order{}).
+		Where("id = ?", id).
+		UpdateColumn("status", status).Error
 }

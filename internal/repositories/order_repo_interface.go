@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"MicroShopik/internal/domain"
+	"gorm.io/gorm"
 )
 
 type OrderRepository interface {
@@ -13,4 +14,6 @@ type OrderRepository interface {
 	Delete(id int) error
 	UpdateStatus(id int, status string) error
 	GetByProductID(productID int) ([]*domain.Order, error)
+	BeginTx() *gorm.DB
+	UpdateStatusTx(tx *gorm.DB, id int, status string) error
 }

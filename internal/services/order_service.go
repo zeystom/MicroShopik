@@ -20,18 +20,22 @@ type OrderService interface {
 }
 
 type orderService struct {
-	orderRepo       repositories.OrderRepository
-	productItemRepo repositories.ProductItemRepository
-	productRepo     repositories.ProductCRUDRepository
-	userRepo        repositories.UserRepository
+	orderRepo           repositories.OrderRepository
+	productItemRepo     repositories.ProductItemRepository
+	productRepo         repositories.ProductCRUDRepository
+	userRepo            repositories.UserRepository
+	conversationService ConversationService
+	messageService      MessageService
 }
 
-func NewOrderService(oRepo repositories.OrderRepository, piRepo repositories.ProductItemRepository, pRepo repositories.ProductCRUDRepository, uRepo repositories.UserRepository) OrderService {
+func NewOrderService(oRepo repositories.OrderRepository, piRepo repositories.ProductItemRepository, pRepo repositories.ProductCRUDRepository, uRepo repositories.UserRepository, convService ConversationService, msgService MessageService) OrderService {
 	return &orderService{
-		orderRepo:       oRepo,
-		productItemRepo: piRepo,
-		productRepo:     pRepo,
-		userRepo:        uRepo,
+		orderRepo:           oRepo,
+		productItemRepo:     piRepo,
+		productRepo:         pRepo,
+		userRepo:            uRepo,
+		conversationService: convService,
+		messageService:      msgService,
 	}
 }
 
@@ -113,13 +117,41 @@ func (s *orderService) ProcessOrder(orderID int) error {
 		return errors.New("order is not in pending status")
 	}
 
+	tx, err := s.orderRepo.BeginTx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	if order.ProductItemID != nil {
-		if err := s.productItemRepo.MarkAsUsed(*order.ProductItemID); err != nil {
+		if err := s.productItemRepo.MarkAsUsedTx(tx, *order.ProductItemID); err != nil {
 			return err
 		}
 	}
 
-	return s.orderRepo.UpdateStatus(orderID, "completed")
+	if err := s.orderRepo.UpdateStatusTx(tx, orderID, "completed"); err != nil {
+		return err
+	}
+
+	if order.CustomerID != nil {
+		product, err := s.productRepo.GetById(*order.ProductID)
+		if err != nil {
+			return err
+		}
+
+		conversation := &domain.Conversation{}
+		participantIDs := []int{*order.CustomerID, product.SellerID}
+
+		if err := s.conversationService.Create(conversation, participantIDs); err != nil {
+			return err
+		}
+
+		if err := s.messageService.SendSystemMessage(conversation.ID, "Order has been processed successfully. You can now discuss delivery details.", &orderID); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit().Error
 }
 
 func (s *orderService) CancelOrder(orderID int, customerID int) error {
