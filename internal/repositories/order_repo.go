@@ -45,6 +45,19 @@ func (r *orderRepository) GetByCustomerID(customerID int) ([]*domain.Order, erro
 	return orders, nil
 }
 
+func (r *orderRepository) GetBySellerID(sellerID int) ([]*domain.Order, error) {
+	var orders []*domain.Order
+	err := r.db.Preload("Product").Preload("ProductItem").Preload("Customer").
+		Joins("JOIN products ON orders.product_id = products.id").
+		Where("products.seller_id = ?", sellerID).
+		Order("orders.created_at DESC").
+		Find(&orders).Error
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
 func (r *orderRepository) GetByStatus(status string) ([]*domain.Order, error) {
 	var orders []*domain.Order
 	err := r.db.Preload("Customer").Preload("Product").Preload("ProductItem").
@@ -81,6 +94,14 @@ func (r *orderRepository) GetByProductID(productID int) ([]*domain.Order, error)
 		return nil, err
 	}
 	return orders, nil
+}
+
+func (r *orderRepository) GetAll() ([]*domain.Order, error) {
+	var orders []*domain.Order
+	err := r.db.Preload("Product").Preload("ProductItem").Preload("Customer").
+		Order("created_at DESC").
+		Find(&orders).Error
+	return orders, err
 }
 
 func (r *orderRepository) BeginTx() *gorm.DB {

@@ -146,11 +146,16 @@ func (r *productRepository) Count(params ProductQueryParams) (int, error) {
 		query = query.Where("price <= ?", *params.MaxPrice)
 	}
 	if params.SearchQuery != nil && *params.SearchQuery != "" {
-		query = query.Where("title ILIKE ? OR description ILIKE ?",
-			"%"+*params.SearchQuery+"%", "%"+*params.SearchQuery+"%")
+		query = query.Where("title ILIKE ? OR description ILIKE ?", "%"+*params.SearchQuery+"%", "%"+*params.SearchQuery+"%")
 	}
 
 	var count int64
 	err := query.Count(&count).Error
 	return int(count), err
+}
+
+func (r *productRepository) GetAll() ([]*domain.Product, error) {
+	var products []*domain.Product
+	err := r.db.Preload("Category").Find(&products).Error
+	return products, err
 }

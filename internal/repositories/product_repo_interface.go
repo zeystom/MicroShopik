@@ -36,4 +36,5 @@ type ProductCRUDRepository interface {
 	IncrementSoldCount(id int, delta int) error
 	Find(params ProductQueryParams) ([]*domain.Product, error)
 	Count(params ProductQueryParams) (int, error)
+	GetAll() ([]*domain.Product, error)
 }

@@ -18,12 +18,13 @@ func NewConversationController(s services.ConversationService) *ConversationCont
 }
 
 // Create @Summary Create a new conversation
-// @Description Create a new conversation with participants
+// @Description Create a new conversation with participants and optional product
 // @Tags conversations
 // @Accept json
 // @Produce json
 // @Param conversation body domain.Conversation true "Conversation object"
 // @Param participantIDs body []int true "Array of participant user IDs"
+// @Param productID body int false "Product ID to link with conversation"
 // @Success 201 {object} domain.Conversation
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
@@ -33,10 +34,16 @@ func (cc *ConversationController) Create(c echo.Context) error {
 	var request struct {
 		Conversation   domain.Conversation `json:"conversation"`
 		ParticipantIDs []int               `json:"participant_ids"`
+		ProductID      *int                `json:"product_id,omitempty"` // ID товара для привязки
 	}
 
 	if err := c.Bind(&request); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	// Устанавливаем ProductID в conversation
+	if request.ProductID != nil {
+		request.Conversation.ProductID = request.ProductID
 	}
 
 	if err := cc.conversationService.Create(&request.Conversation, request.ParticipantIDs); err != nil {
@@ -84,6 +91,28 @@ func (cc *ConversationController) GetByUserID(c echo.Context) error {
 	}
 
 	conversations, err := cc.conversationService.GetByUserID(userID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, conversations)
+}
+
+// GetByProductID @Summary Get conversations by product ID
+// @Description Get all conversations related to a specific product
+// @Tags conversations
+// @Produce json
+// @Param productID path int true "Product ID"
+// @Success 200 {array} domain.Conversation
+// @Failure 400 {object} map[string]string
+// @Router /products/{productID}/conversations [get]
+func (cc *ConversationController) GetByProductID(c echo.Context) error {
+	productID, err := strconv.Atoi(c.Param("productID"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product id"})
+	}
+
+	conversations, err := cc.conversationService.GetByProductID(productID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}

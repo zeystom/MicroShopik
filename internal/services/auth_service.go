@@ -12,7 +12,7 @@ import (
 
 type AuthService interface {
 	Register(user *domain.User) error
-	Login(email, password string) (string, error)
+	Login(email, password string) (string, *domain.User, error)
 }
 
 type authService struct {
@@ -45,29 +45,40 @@ func (a *authService) Register(user *domain.User) error {
 	return nil
 }
 
-func (a *authService) Login(email, password string) (string, error) {
+func (a *authService) Login(email, password string) (string, *domain.User, error) {
 	findUser, err := a.userRepo.GetByEmail(email)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(findUser.Password), []byte(password)); err != nil {
-		return "", errors.New("incorrect credentials")
+		return "", nil, errors.New("incorrect credentials")
 	}
-	roles, err := a.userRepo.GetRoles(findUser.ID)
+
+	findUser, err = a.userRepo.GetByID(findUser.ID)
 	if err != nil {
-		return "", errors.New("failed to get user roles")
+		return "", nil, errors.New("failed to get user with roles")
 	}
+
+	var roleNames []string
+	for _, role := range findUser.Roles {
+		roleNames = append(roleNames, role.Name)
+	}
+
 	claims := domain.JWTClaims{
 		UserID: findUser.ID,
-		Roles:  roles,
+		Roles:  roleNames,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour))},
 	}
 
 	if err := a.userRepo.LastLoginUpdate(findUser.ID); err != nil {
-		return "", errors.New("failed to update last login time")
+		return "", nil, errors.New("failed to update last login time")
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(a.jwtSecret))
+	tokenString, err := token.SignedString([]byte(a.jwtSecret))
+	if err != nil {
+		return "", nil, err
+	}
 
+	return tokenString, findUser, nil
 }

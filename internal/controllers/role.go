@@ -119,3 +119,82 @@ func (rc *RoleController) GetUserRoles(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, roles)
 }
+
+// Update @Summary Update role
+// @Description Update an existing role (admin only)
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param id path int true "Role ID"
+// @Param role body domain.Role true "Role object"
+// @Success 200 {object} domain.Role
+// @Failure 400 {object} map[string]string
+// @Security ApiKeyAuth
+// @Router /roles/{id} [put]
+func (rc *RoleController) Update(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role id"})
+	}
+
+	var role domain.Role
+	if err := c.Bind(&role); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	role.ID = id
+	err = rc.roleService.Update(&role)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, role)
+}
+
+// Delete @Summary Delete role
+// @Description Delete a role (admin only)
+// @Tags roles
+// @Produce json
+// @Param id path int true "Role ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Security ApiKeyAuth
+// @Router /roles/{id} [delete]
+func (rc *RoleController) Delete(c echo.Context) error {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role id"})
+	}
+
+	err = rc.roleService.Delete(id)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "role deleted successfully"})
+}
+
+// RemoveRoleFromUser @Summary Remove role from user
+// @Description Remove a role from a specific user (admin only)
+// @Tags roles
+// @Produce json
+// @Param user_id path int true "User ID"
+// @Param role_name path string true "Role name"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Security ApiKeyAuth
+// @Router /users/{user_id}/roles/{role_name} [delete]
+func (rc *RoleController) RemoveRoleFromUser(c echo.Context) error {
+	userID, err := strconv.Atoi(c.Param("user_id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user id"})
+	}
+
+	roleName := c.Param("role_name")
+	err = rc.roleService.RemoveRoleFromUser(userID, roleName)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "role removed successfully"})
+}

@@ -9,6 +9,7 @@ type ConversationRepository interface {
 	Create(conversation *domain.Conversation) error
 	GetByID(id int) (*domain.Conversation, error)
 	GetByUserID(userID int) ([]*domain.Conversation, error)
+	GetByProductID(productID int) ([]*domain.Conversation, error) // Новый метод для поиска по товару
 	Update(conversation *domain.Conversation) error
 	Delete(id int) error
 	AddParticipant(conversationID, userID int) error

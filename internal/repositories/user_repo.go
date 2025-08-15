@@ -93,7 +93,15 @@ func (r *userRepository) Delete(userID int) error {
 	}
 	return r.db.Delete(&user).Error
 }
+func (r *userRepository) GetAll() ([]domain.User, error) {
+	var users []domain.User
+	err := r.db.Preload("Roles").Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
 func (r *userRepository) Update(user *domain.User) error {
 	return r.db.Save(user).Error
-
 }

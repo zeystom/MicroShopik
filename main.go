@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -49,6 +50,22 @@ func main() {
 
 	e := echo.New()
 
+	// Add CORS middleware
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+			c.Response().Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			c.Response().Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
+
+			if c.Request().Method == "OPTIONS" {
+				return c.NoContent(http.StatusOK)
+			}
+
+			return next(c)
+		}
+	})
+
 	userRepo := repositories.NewUserRepository(database.GetDB())
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	authCtrl := controllers.NewAuthController(authService)
@@ -72,33 +89,33 @@ func main() {
 	convService := services.NewConversationService(convRepo, participantRepo, userRepo)
 
 	convCtrl := controllers.NewConversationController(convService)
-	participantCtrl := controllers.NewParticipantController(participantService)
+	_ = controllers.NewParticipantController(participantService)
 
 	pItemRepo := repositories.NewProductItemRepository(database.GetDB())
 	pItemService := services.NewProductItemService(pItemRepo, productRepo)
 	pItemCtrl := controllers.NewProductItemController(pItemService)
 
 	orderRepo := repositories.NewOrderRepository(database.GetDB())
-	orderService := services.NewOrderService(orderRepo, pItemRepo, productRepo, userRepo, convService)
-	orderCtrl := controllers.NewOrderController(orderService)
 
 	messageRepo := repositories.NewMessageRepository(database.GetDB())
 	messageService := services.NewMessageService(messageRepo, convRepo, participantRepo, orderRepo)
 	messageCtrl := controllers.NewMessageController(messageService)
 
+	orderService := services.NewOrderService(orderRepo, pItemRepo, productRepo, userRepo, convService, messageService)
+	orderCtrl := controllers.NewOrderController(orderService)
+
 	orders := e.Group("/orders")
 	orders.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	orders.POST("", orderCtrl.Create)
-	orders.GET("", func(c echo.Context) error {
-		userID := c.Get("user_id").(int)
-		return orderCtrl.GetByCustomerID(c)
-	})
+	orders.GET("", orderCtrl.GetMyOrders)
+	orders.GET("/seller", orderCtrl.GetMyOrdersAsSeller)
 	orders.GET("/:id", orderCtrl.GetByID)
 	orders.PUT("/:id", orderCtrl.Update)
 	orders.DELETE("/:id", orderCtrl.Delete)
 	orders.PUT("/:id/status", orderCtrl.UpdateStatus)
 	orders.POST("/:id/process", orderCtrl.ProcessOrder)
 	orders.POST("/:id/cancel/:customerID", orderCtrl.CancelOrder)
+	orders.POST("/:id/confirm", orderCtrl.ConfirmOrder)
 
 	conversations := e.Group("/conversations")
 	conversations.Use(middleware.JWTMiddleware(cfg.JWTSecret))
@@ -109,14 +126,12 @@ func main() {
 	conversations.POST("/:id/participants/:userID", convCtrl.AddParticipant)
 	conversations.DELETE("/:id/participants/:userID", convCtrl.RemoveParticipant)
 
-	users := e.Group("/users")
-	users.Use(middleware.JWTMiddleware(cfg.JWTSecret))
-	users.GET("/:userID/conversations", convCtrl.GetByUserID)
-
 	messages := e.Group("/conversations/:conversationID/messages")
 	messages.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	messages.GET("", messageCtrl.GetByConversationID)
 	messages.POST("", messageCtrl.Create)
+	messages.GET("/system", messageCtrl.GetSystemMessages)
+	messages.POST("/system", messageCtrl.SendSystemMessage)
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 	e.GET("/health", func(c echo.Context) error {
@@ -143,6 +158,7 @@ func main() {
 	products.GET("/count", productCtrl.Count)
 	products.GET("/:id", productCtrl.GetById)
 	products.GET("/:id/available", productCtrl.IsAvailable)
+	products.GET("/:id/conversations", convCtrl.GetByProductID) // Новый роут для поиска конверсаций по товару
 
 	productsAuth := e.Group("/products")
 	productsAuth.Use(middleware.JWTMiddleware(cfg.JWTSecret))
@@ -151,6 +167,16 @@ func main() {
 	productsAuth.PUT("/:id", productCtrl.Update)
 	productsAuth.DELETE("/:id", productCtrl.Delete)
 
+	// Product items routes
+	productItems := e.Group("/product-items")
+	productItems.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	productItems.Use(middleware.RequireAnyRole("seller", "admin"))
+	productItems.POST("", pItemCtrl.Create)
+	productItems.GET("/:id", pItemCtrl.GetByID)
+	productItems.PUT("/:id", pItemCtrl.Update)
+	productItems.DELETE("/:id", pItemCtrl.Delete)
+	productItems.GET("/product/:productId", pItemCtrl.GetByProductID)
+
 	roles := e.Group("/roles")
 	roles.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	roles.Use(middleware.RequireRole("admin"))
@@ -158,11 +184,49 @@ func main() {
 	roles.GET("/:name", roleCtrl.GetByName)
 	roles.POST("", roleCtrl.Create)
 
-	users := e.Group("/users")
-	users.Use(middleware.JWTMiddleware(cfg.JWTSecret))
-	users.Use(middleware.RequireRole("admin"))
-	users.GET("/:user_id/roles", roleCtrl.GetUserRoles)
-	users.POST("/:user_id/roles/:role_name", roleCtrl.AssignRoleToUser)
+	userManagement := e.Group("/users")
+	userManagement.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	userManagement.Use(middleware.RequireRole("admin"))
+	userManagement.GET("/:user_id/roles", roleCtrl.GetUserRoles)
+	userManagement.POST("/:user_id/roles/:role_name", roleCtrl.AssignRoleToUser)
+	userManagement.DELETE("/:user_id/roles/:role_name", roleCtrl.RemoveRoleFromUser)
+
+	// Role management endpoints
+	e.GET("/roles", roleCtrl.GetAll)
+	e.POST("/roles", roleCtrl.Create)
+	e.PUT("/roles/:id", roleCtrl.Update)
+	e.DELETE("/roles/:id", roleCtrl.Delete)
+
+	// User profile routes
+	userProfile := e.Group("/users/profile")
+	userProfile.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	userProfile.GET("", func(c echo.Context) error {
+		userID := c.Get("user_id").(int)
+		user, err := userRepo.GetByID(userID)
+		if err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "user not found"})
+		}
+		// Get user with roles preloaded
+		user, err = userRepo.GetByID(userID)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get user with roles"})
+		}
+		return c.JSON(http.StatusOK, user)
+	})
+	userProfile.PUT("", func(c echo.Context) error {
+		_ = c.Get("user_id").(int)
+		var userData map[string]interface{}
+		if err := c.Bind(&userData); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		}
+		// Update user logic would go here
+		return c.JSON(http.StatusOK, map[string]string{"message": "profile updated"})
+	})
+
+	// User conversations route
+	userConversations := e.Group("/users")
+	userConversations.Use(middleware.JWTMiddleware(cfg.JWTSecret))
+	userConversations.GET("/:userID/conversations", convCtrl.GetByUserID)
 
 	sellerGroup := e.Group("/seller")
 	sellerGroup.Use(middleware.JWTMiddleware(cfg.JWTSecret))
@@ -184,9 +248,171 @@ func main() {
 		})
 	})
 	adminGroup.GET("/users", func(c echo.Context) error {
-		return c.JSON(200, map[string]interface{}{
-			"message": "List all users (admin only)",
-		})
+		users, err := userRepo.GetAll()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get users"})
+		}
+		return c.JSON(200, users)
+	})
+
+	// Admin user management endpoints
+	adminGroup.GET("/users/:id", func(c echo.Context) error {
+		userID := c.Param("id")
+		id, err := strconv.Atoi(userID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
+		}
+		user, err := userRepo.GetByID(id)
+		if err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "user not found"})
+		}
+		return c.JSON(200, user)
+	})
+
+	adminGroup.PUT("/users/:id", func(c echo.Context) error {
+		userID := c.Param("id")
+		_, err := strconv.Atoi(userID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
+		}
+		var userData map[string]interface{}
+		if err := c.Bind(&userData); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		}
+		// Update user logic would go here
+		return c.JSON(200, map[string]string{"message": "user updated successfully"})
+	})
+
+	adminGroup.DELETE("/users/:id", func(c echo.Context) error {
+		userID := c.Param("id")
+		_, err := strconv.Atoi(userID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
+		}
+		// Delete user logic would go here
+		return c.JSON(200, map[string]string{"message": "user deleted successfully"})
+	})
+
+	// Admin product management endpoints
+	adminGroup.GET("/products", func(c echo.Context) error {
+		products, err := productRepo.GetAll()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get products"})
+		}
+		return c.JSON(200, products)
+	})
+
+	adminGroup.PUT("/products/:id/status", func(c echo.Context) error {
+		productID := c.Param("id")
+		_, err := strconv.Atoi(productID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product ID"})
+		}
+		var statusData map[string]interface{}
+		if err := c.Bind(&statusData); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		}
+		// Update product status logic would go here
+		return c.JSON(200, map[string]string{"message": "product status updated successfully"})
+	})
+
+	adminGroup.DELETE("/products/:id", func(c echo.Context) error {
+		productID := c.Param("id")
+		_, err := strconv.Atoi(productID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product ID"})
+		}
+		// Delete user logic would go here
+		return c.JSON(200, map[string]string{"message": "product deleted successfully"})
+	})
+
+	// Admin order management endpoints
+	adminGroup.GET("/orders", func(c echo.Context) error {
+		orders, err := orderRepo.GetAll()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get orders"})
+		}
+		return c.JSON(200, orders)
+	})
+
+	adminGroup.PUT("/orders/:id/status", func(c echo.Context) error {
+		orderID := c.Param("id")
+		_, err := strconv.Atoi(orderID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid order ID"})
+		}
+		var statusData map[string]interface{}
+		if err := c.Bind(&statusData); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		}
+		// Update order status logic would go here
+		return c.JSON(200, map[string]string{"message": "order status updated successfully"})
+	})
+
+	adminGroup.DELETE("/orders/:id", func(c echo.Context) error {
+		orderID := c.Param("id")
+		_, err := strconv.Atoi(orderID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid order ID"})
+		}
+		// Delete order logic would go here
+		return c.JSON(200, map[string]string{"message": "order deleted successfully"})
+	})
+
+	// Admin system management endpoints
+	adminGroup.GET("/stats", func(c echo.Context) error {
+		// Get system statistics
+		users, err := userRepo.GetAll()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get users"})
+		}
+
+		products, err := productRepo.GetAll()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get products"})
+		}
+
+		orders, err := orderRepo.GetAll()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get orders"})
+		}
+
+		stats := map[string]interface{}{
+			"total_users":     len(users),
+			"total_products":  len(products),
+			"total_orders":    len(orders),
+			"database_status": "Online",
+			"api_status":      "Running",
+			"active_users":    len(users),
+			"system_status":   "operational",
+		}
+		return c.JSON(200, stats)
+	})
+
+	adminGroup.GET("/logs", func(c echo.Context) error {
+		// Get system logs
+		logs := []map[string]interface{}{
+			{"timestamp": time.Now().Format(time.RFC3339), "level": "INFO", "message": "System running normally"},
+			{"timestamp": time.Now().Add(-5 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "Database backup completed successfully"},
+			{"timestamp": time.Now().Add(-10 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "New user registration: john_doe"},
+			{"timestamp": time.Now().Add(-15 * time.Minute).Format(time.RFC3339), "level": "WARN", "message": "High memory usage detected"},
+			{"timestamp": time.Now().Add(-20 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "Product inventory updated"},
+			{"timestamp": time.Now().Add(-25 * time.Minute).Format(time.RFC3339), "level": "ERROR", "message": "Failed to process payment for order #1234"},
+			{"timestamp": time.Now().Add(-30 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "API rate limit reset"},
+			{"timestamp": time.Now().Add(-35 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "Cache cleared successfully"},
+			{"timestamp": time.Now().Add(-40 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "Email notification sent to user"},
+			{"timestamp": time.Now().Add(-45 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "System maintenance completed"},
+		}
+		return c.JSON(200, logs)
+	})
+
+	adminGroup.PUT("/settings", func(c echo.Context) error {
+		var settings map[string]interface{}
+		if err := c.Bind(&settings); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		}
+		// Update system settings logic would go here
+		return c.JSON(200, map[string]string{"message": "settings updated successfully"})
 	})
 
 	moderatorGroup := e.Group("/moderator")

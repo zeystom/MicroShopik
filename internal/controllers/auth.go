@@ -55,12 +55,12 @@ func (a *AuthController) Register(c echo.Context) error {
 
 // Login godoc
 // @Summary Login a user
-// @Description Login with email and password to receive a JWT token
+// @Description Login with email and password to receive a JWT token and user data
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param credentials body domain.AuthRequest true "Login credentials"
-// @Success 201 {object} map[string]string
+// @Success 201 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Router /auth/login [post]
 func (a *AuthController) Login(c echo.Context) error {
@@ -68,10 +68,12 @@ func (a *AuthController) Login(c echo.Context) error {
 	if err := c.Bind(&auth); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	token, err := a.authService.Login(auth.Email, auth.Password)
+	token, user, err := a.authService.Login(auth.Email, auth.Password)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-
 	}
-	return c.JSON(http.StatusCreated, map[string]string{"token": token})
+	return c.JSON(http.StatusCreated, map[string]interface{}{
+		"token": token,
+		"user":  user,
+	})
 }

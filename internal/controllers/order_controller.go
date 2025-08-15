@@ -17,7 +17,47 @@ func NewOrderController(s services.OrderService) *OrderController {
 	return &OrderController{orderService: s}
 }
 
-// @Summary Create a new order
+// GetMyOrders @Summary Get orders for current user
+// @Description Get all orders for the authenticated user
+// @Tags orders
+// @Produce json
+// @Success 200 {array} domain.Order
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Security ApiKeyAuth
+// @Router /orders [get]
+func (oc *OrderController) GetMyOrders(c echo.Context) error {
+	userID := c.Get("user_id").(int)
+
+	orders, err := oc.orderService.GetByCustomerID(userID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, orders)
+}
+
+// GetMyOrdersAsSeller @Summary Get orders for seller's products
+// @Description Get all orders for products belonging to the authenticated seller
+// @Tags orders
+// @Produce json
+// @Success 200 {array} domain.Order
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Security ApiKeyAuth
+// @Router /orders/seller [get]
+func (oc *OrderController) GetMyOrdersAsSeller(c echo.Context) error {
+	userID := c.Get("user_id").(int)
+
+	orders, err := oc.orderService.GetBySellerID(userID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, orders)
+}
+
+// Create @Summary Create a new order
 // @Description Create a new order for a customer
 // @Tags orders
 // @Accept json
@@ -29,10 +69,15 @@ func NewOrderController(s services.OrderService) *OrderController {
 // @Security ApiKeyAuth
 // @Router /orders [post]
 func (oc *OrderController) Create(c echo.Context) error {
+	userID := c.Get("user_id").(int)
+
 	var order domain.Order
 	if err := c.Bind(&order); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
+
+	// Set the customer ID from JWT token
+	order.CustomerID = &userID
 
 	if err := oc.orderService.Create(&order); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -41,7 +86,7 @@ func (oc *OrderController) Create(c echo.Context) error {
 	return c.JSON(http.StatusCreated, order)
 }
 
-// @Summary Get an order by ID
+// GetByID @Summary Get an order by ID
 // @Description Get order details by ID
 // @Tags orders
 // @Produce json
@@ -64,7 +109,7 @@ func (oc *OrderController) GetByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, order)
 }
 
-// @Summary Get orders by customer ID
+// GetByCustomerID @Summary Get orders by customer ID
 // @Description Get all orders for a specific customer
 // @Tags orders
 // @Produce json
@@ -86,7 +131,7 @@ func (oc *OrderController) GetByCustomerID(c echo.Context) error {
 	return c.JSON(http.StatusOK, orders)
 }
 
-// @Summary Get orders by status
+// GetByStatus @Summary Get orders by status
 // @Description Get all orders with a specific status
 // @Tags orders
 // @Produce json
@@ -108,7 +153,7 @@ func (oc *OrderController) GetByStatus(c echo.Context) error {
 	return c.JSON(http.StatusOK, orders)
 }
 
-// @Summary Update an order
+// Update @Summary Update an order
 // @Description Update an order (admin/seller only)
 // @Tags orders
 // @Accept json
@@ -140,7 +185,7 @@ func (oc *OrderController) Update(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "order updated successfully"})
 }
 
-// @Summary Delete an order
+// Delete @Summary Delete an order
 // @Description Delete an order (admin only)
 // @Tags orders
 // @Produce json
@@ -164,7 +209,7 @@ func (oc *OrderController) Delete(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "order deleted successfully"})
 }
 
-// @Summary Update order status
+// UpdateStatus @Summary Update order status
 // @Description Update the status of an order
 // @Tags orders
 // @Accept json
@@ -199,7 +244,7 @@ func (oc *OrderController) UpdateStatus(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "order status updated successfully"})
 }
 
-// @Summary Get orders by product ID
+// GetByProductID @Summary Get orders by product ID
 // @Description Get all orders for a specific product
 // @Tags orders
 // @Produce json
@@ -221,7 +266,7 @@ func (oc *OrderController) GetByProductID(c echo.Context) error {
 	return c.JSON(http.StatusOK, orders)
 }
 
-// @Summary Process an order
+// ProcessOrder @Summary Process an order
 // @Description Process a pending order (admin/seller only)
 // @Tags orders
 // @Produce json
@@ -244,7 +289,7 @@ func (oc *OrderController) ProcessOrder(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "order processed successfully"})
 }
 
-// @Summary Cancel an order
+// CancelOrder @Summary Cancel an order
 // @Description Cancel a pending order (customer only)
 // @Tags orders
 // @Produce json
@@ -271,4 +316,28 @@ func (oc *OrderController) CancelOrder(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "order cancelled successfully"})
+}
+
+// ConfirmOrder @Summary Confirm an order payment
+// @Description Confirm payment for a pending order (customer only)
+// @Tags orders
+// @Produce json
+// @Param id path int true "Order ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Security ApiKeyAuth
+// @Router /orders/{id}/confirm [post]
+func (oc *OrderController) ConfirmOrder(c echo.Context) error {
+	orderID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid order id"})
+	}
+
+	userID := c.Get("user_id").(int)
+	if err := oc.orderService.ConfirmOrder(orderID, userID); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "order payment confirmed successfully"})
 }

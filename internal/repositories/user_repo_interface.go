@@ -12,6 +12,7 @@ type UserRepository interface {
 	RemoveRole(userID int, roleName string) error
 	GetByEmail(email string) (*domain.User, error)
 	GetByID(userID int) (*domain.User, error)
+	GetAll() ([]domain.User, error)
 	Delete(userID int) error
 	Update(user *domain.User) error
 }

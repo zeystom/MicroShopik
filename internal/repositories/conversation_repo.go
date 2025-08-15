@@ -21,7 +21,7 @@ func (r *conversationRepository) Create(conversation *domain.Conversation) error
 
 func (r *conversationRepository) GetByID(id int) (*domain.Conversation, error) {
 	var conversation domain.Conversation
-	err := r.db.Preload("Participants.User").Preload("Messages.Sender").Where("id = ?", id).First(&conversation).Error
+	err := r.db.Preload("Product").Preload("Participants.User").Preload("Messages.Sender").Where("id = ?", id).First(&conversation).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("conversation not found")
@@ -35,6 +35,20 @@ func (r *conversationRepository) GetByUserID(userID int) ([]*domain.Conversation
 	var conversations []*domain.Conversation
 	err := r.db.Joins("JOIN participants ON conversations.id = participants.conversation_id").
 		Where("participants.user_id = ?", userID).
+		Preload("Product").
+		Preload("Participants.User").
+		Preload("Messages.Sender").
+		Find(&conversations).Error
+	if err != nil {
+		return nil, err
+	}
+	return conversations, nil
+}
+
+func (r *conversationRepository) GetByProductID(productID int) ([]*domain.Conversation, error) {
+	var conversations []*domain.Conversation
+	err := r.db.Where("product_id = ?", productID).
+		Preload("Product").
 		Preload("Participants.User").
 		Preload("Messages.Sender").
 		Find(&conversations).Error

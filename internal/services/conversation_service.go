@@ -11,6 +11,7 @@ type ConversationService interface {
 	Create(conversation *domain.Conversation, participantIDs []int) error
 	GetByID(id int) (*domain.Conversation, error)
 	GetByUserID(userID int) ([]*domain.Conversation, error)
+	GetByProductID(productID int) ([]*domain.Conversation, error) // Новый метод для поиска по товару
 	Update(conversation *domain.Conversation) error
 	Delete(id int) error
 	AddParticipant(conversationID, userID int) error
@@ -65,6 +66,10 @@ func (s *conversationService) GetByID(id int) (*domain.Conversation, error) {
 
 func (s *conversationService) GetByUserID(userID int) ([]*domain.Conversation, error) {
 	return s.conversationRepo.GetByUserID(userID)
+}
+
+func (s *conversationService) GetByProductID(productID int) ([]*domain.Conversation, error) {
+	return s.conversationRepo.GetByProductID(productID)
 }
 
 func (s *conversationService) Update(conversation *domain.Conversation) error {

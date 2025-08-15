@@ -4,12 +4,14 @@ import (
 	"MicroShopik/internal/domain"
 	"MicroShopik/internal/repositories"
 	"errors"
+	"gorm.io/gorm"
 )
 
 type OrderService interface {
 	Create(order *domain.Order) error
 	GetByID(id int) (*domain.Order, error)
 	GetByCustomerID(customerID int) ([]*domain.Order, error)
+	GetBySellerID(sellerID int) ([]*domain.Order, error)
 	GetByStatus(status string) ([]*domain.Order, error)
 	Update(order *domain.Order) error
 	Delete(id int) error
@@ -17,6 +19,7 @@ type OrderService interface {
 	GetByProductID(productID int) ([]*domain.Order, error)
 	ProcessOrder(orderID int) error
 	CancelOrder(orderID int, customerID int) error
+	ConfirmOrder(orderID int, customerID int) error
 }
 
 type orderService struct {
@@ -47,10 +50,14 @@ func (s *orderService) Create(order *domain.Order) error {
 		}
 	}
 
+	// Validate product and prevent self-purchase
 	if order.ProductID != nil {
-		_, err := s.productRepo.GetById(*order.ProductID)
+		product, err := s.productRepo.GetById(*order.ProductID)
 		if err != nil {
 			return errors.New("product not found")
+		}
+		if order.CustomerID != nil && product.SellerID == *order.CustomerID {
+			return errors.New("cannot purchase your own product")
 		}
 	}
 
@@ -61,6 +68,10 @@ func (s *orderService) Create(order *domain.Order) error {
 		}
 		if productItem.IsUsed {
 			return errors.New("product item is already used")
+		}
+		// Extra safety: prevent self-purchase via product item as well
+		if order.CustomerID != nil && productItem.Product.ID != 0 && productItem.Product.SellerID == *order.CustomerID {
+			return errors.New("cannot purchase your own product")
 		}
 	}
 
@@ -73,6 +84,10 @@ func (s *orderService) GetByID(id int) (*domain.Order, error) {
 
 func (s *orderService) GetByCustomerID(customerID int) ([]*domain.Order, error) {
 	return s.orderRepo.GetByCustomerID(customerID)
+}
+
+func (s *orderService) GetBySellerID(sellerID int) ([]*domain.Order, error) {
+	return s.orderRepo.GetBySellerID(sellerID)
 }
 
 func (s *orderService) GetByStatus(status string) ([]*domain.Order, error) {
@@ -117,10 +132,7 @@ func (s *orderService) ProcessOrder(orderID int) error {
 		return errors.New("order is not in pending status")
 	}
 
-	tx, err := s.orderRepo.BeginTx()
-	if err != nil {
-		return err
-	}
+	tx := s.orderRepo.BeginTx()
 	defer tx.Rollback()
 
 	if order.ProductItemID != nil {
@@ -131,6 +143,15 @@ func (s *orderService) ProcessOrder(orderID int) error {
 
 	if err := s.orderRepo.UpdateStatusTx(tx, orderID, "completed"); err != nil {
 		return err
+	}
+
+	// Increment sold_count atomically within the same transaction
+	if order.ProductID != nil {
+		if err := tx.Model(&domain.Product{}).
+			Where("id = ?", *order.ProductID).
+			UpdateColumn("sold_count", gorm.Expr("sold_count + ?", 1)).Error; err != nil {
+			return err
+		}
 	}
 
 	if order.CustomerID != nil {
@@ -169,4 +190,33 @@ func (s *orderService) CancelOrder(orderID int, customerID int) error {
 	}
 
 	return s.orderRepo.UpdateStatus(orderID, "cancelled")
+}
+
+func (s *orderService) ConfirmOrder(orderID int, customerID int) error {
+	order, err := s.orderRepo.GetByID(orderID)
+	if err != nil {
+		return err
+	}
+
+	if order.CustomerID == nil || *order.CustomerID != customerID {
+		return errors.New("unauthorized to confirm this order")
+	}
+
+	if order.Status != "pending" {
+		return errors.New("order cannot be confirmed")
+	}
+
+	// Update order status first
+	if err := s.orderRepo.UpdateStatus(orderID, "confirmed"); err != nil {
+		return err
+	}
+
+	// Increment product sold count if applicable
+	if order.ProductID != nil {
+		if err := s.productRepo.IncrementSoldCount(*order.ProductID, 1); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
