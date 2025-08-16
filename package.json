@@ -1,0 +1,21 @@
+{
+  "name": "microshopik",
+  "version": "1.0.0",
+  "description": "MicroShopik - Digital Goods Marketplace",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "go run main.go",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "go build -o bin/microshopik main.go",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "npm install && cd frontend && npm install",
+    "start": "go run main.go"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["go", "react", "typescript", "marketplace", "digital-goods"],
+  "author": "MicroShopik Team",
+  "license": "MIT"
+}

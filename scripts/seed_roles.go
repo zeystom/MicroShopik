@@ -1,4 +1,4 @@
-package main
+package scripts
 
 import (
 	"MicroShopik/configs"
@@ -8,17 +8,8 @@ import (
 	"log"
 )
 
-func main() {
-	cfg, err := configs.Load()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = database.InitDB(cfg)
-	if err != nil {
-		log.Fatal("Failed to initialize database:", err)
-	}
-
+// runSeedRoles creates initial roles in the database
+func runSeedRoles(_ *configs.Config) error {
 	roleRepo := repositories.NewRoleRepository(database.GetDB())
 
 	roles := []domain.Role{
@@ -50,4 +41,5 @@ func main() {
 	}
 
 	log.Println("Role seeding completed!")
+	return nil
 }

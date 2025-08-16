@@ -8,6 +8,7 @@ import (
 	"MicroShopik/internal/middleware"
 	"MicroShopik/internal/repositories"
 	"MicroShopik/internal/services"
+	"MicroShopik/scripts"
 	"context"
 	"errors"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -46,6 +48,12 @@ func main() {
 	err = database.InitDB(cfg)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
+	}
+
+	// Run initial seed data after database initialization (only if database is empty)
+	log.Println("Checking if seed data is needed...")
+	if err := scripts.RunInitialSeed(cfg); err != nil {
+		log.Printf("Warning: Failed to run initial seed: %v", err)
 	}
 
 	e := echo.New()
@@ -270,8 +278,8 @@ func main() {
 	})
 
 	adminGroup.PUT("/users/:id", func(c echo.Context) error {
-		userID := c.Param("id")
-		_, err := strconv.Atoi(userID)
+		userIDParam := c.Param("id")
+		id, err := strconv.Atoi(userIDParam)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
 		}
@@ -279,18 +287,34 @@ func main() {
 		if err := c.Bind(&userData); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		}
-		// Update user logic would go here
-		return c.JSON(200, map[string]string{"message": "user updated successfully"})
+		user, err := userRepo.GetByID(id)
+		if err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "user not found"})
+		}
+		if v, ok := userData["username"].(string); ok && v != "" {
+			user.Username = v
+		}
+		if v, ok := userData["email"].(string); ok && v != "" {
+			user.Email = v
+		}
+		if err := userRepo.Update(user); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update user"})
+		}
+		// Return updated user with roles
+		updated, _ := userRepo.GetByID(id)
+		return c.JSON(http.StatusOK, updated)
 	})
 
 	adminGroup.DELETE("/users/:id", func(c echo.Context) error {
-		userID := c.Param("id")
-		_, err := strconv.Atoi(userID)
+		userIDParam := c.Param("id")
+		id, err := strconv.Atoi(userIDParam)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
 		}
-		// Delete user logic would go here
-		return c.JSON(200, map[string]string{"message": "user deleted successfully"})
+		if err := userRepo.Delete(id); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusOK, map[string]string{"message": "user deleted successfully"})
 	})
 
 	// Admin product management endpoints
@@ -423,6 +447,34 @@ func main() {
 			"message": "View reports (admin or moderator)",
 		})
 	})
+
+	// Serve built frontend (SPA) and enable history API fallback
+	// Ensure `frontend/dist` exists (run frontend build) before starting the server
+	e.Static("/assets", "frontend/dist/assets")
+	e.File("/", "frontend/dist/index.html")
+	e.GET("/*", func(c echo.Context) error {
+		if c.Request().Method != http.MethodGet {
+			return c.NoContent(http.StatusNotFound)
+		}
+		return c.File("frontend/dist/index.html")
+	})
+
+	// Robust SPA fallback via HTTP error handler for any unmatched GET route
+	originalHTTPErrorHandler := e.HTTPErrorHandler
+	e.HTTPErrorHandler = func(err error, c echo.Context) {
+		if he, ok := err.(*echo.HTTPError); ok && he.Code == http.StatusNotFound {
+			req := c.Request()
+			if req.Method == http.MethodGet && strings.Contains(req.Header.Get("Accept"), "text/html") {
+				_ = c.File("frontend/dist/index.html")
+				return
+			}
+		}
+		if originalHTTPErrorHandler != nil {
+			originalHTTPErrorHandler(err, c)
+			return
+		}
+		_ = c.JSON(http.StatusInternalServerError, map[string]string{"error": http.StatusText(http.StatusInternalServerError)})
+	}
 
 	go func() {
 		if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {

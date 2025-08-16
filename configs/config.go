@@ -3,7 +3,6 @@ package configs
 import (
 	"fmt"
 	"github.com/joho/godotenv"
-	"log"
 	"os"
 	"strconv"
 )
@@ -19,9 +18,7 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	if err := godotenv.Load(".env"); err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	_ = godotenv.Load(".env")
 
 	jwtSecret := getEnv("JWT_SECRET", "dev-secret-key")
 
