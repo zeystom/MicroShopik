@@ -8,7 +8,6 @@ import (
 	"log"
 )
 
-// runSeedRoles creates initial roles in the database
 func runSeedRoles(_ *configs.Config) error {
 	roleRepo := repositories.NewRoleRepository(database.GetDB())
 

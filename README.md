@@ -10,6 +10,7 @@ A full-stack digital goods marketplace built with Go (backend) and React TypeScr
 - **Messaging System**: Real-time conversations between buyers and sellers
 - **Role-Based Access**: Admin, Seller, and Customer roles with different permissions
 - **RESTful API**: Comprehensive API with Swagger documentation
+- **Keep-Alive System**: Automatic ping to prevent server sleep on Render.com
 
 ## Tech Stack
 
@@ -209,6 +210,20 @@ migrate -path migrations -database "postgres://username:password@localhost:5432/
 # Rollback migrations
 migrate -path migrations -database "postgres://username:password@localhost:5432/microshopik?sslmode=disable" down
 ```
+
+## Deployment
+
+### Render.com Deployment
+
+The application includes a keep-alive system to prevent server sleep on Render.com's free tier. See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for detailed deployment instructions.
+
+#### Quick Setup for Render.com:
+1. Create a new Web Service on Render.com
+2. Connect your GitHub repository
+3. Set environment variables (see `render.env.example`)
+4. Deploy!
+
+The keep-alive system will automatically ping the server every 10 minutes to keep it active.
 
 ## Contributing
 

@@ -50,7 +50,6 @@ func main() {
 		log.Fatal("Failed to initialize database:", err)
 	}
 
-	// Run initial seed data after database initialization (only if database is empty)
 	log.Println("Checking if seed data is needed...")
 	if err := scripts.RunInitialSeed(cfg); err != nil {
 		log.Printf("Warning: Failed to run initial seed: %v", err)
@@ -58,7 +57,6 @@ func main() {
 
 	e := echo.New()
 
-	// Add CORS middleware
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Response().Header().Set("Access-Control-Allow-Origin", "*")
@@ -112,6 +110,9 @@ func main() {
 	orderService := services.NewOrderService(orderRepo, pItemRepo, productRepo, userRepo, convService, messageService)
 	orderCtrl := controllers.NewOrderController(orderService)
 
+	// Record start time for uptime calculation
+	startTime := time.Now()
+
 	orders := e.Group("/orders")
 	orders.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	orders.POST("", orderCtrl.Create)
@@ -143,7 +144,13 @@ func main() {
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(200, map[string]string{"status": "ok", "message": "MicroShopik API is running"})
+		return c.JSON(200, map[string]interface{}{
+			"status":    "ok",
+			"message":   "MicroShopik API is running",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"uptime":    time.Since(startTime).String(),
+			"version":   "1.0.0",
+		})
 	})
 
 	auth := e.Group("/auth")
@@ -175,7 +182,6 @@ func main() {
 	productsAuth.PUT("/:id", productCtrl.Update)
 	productsAuth.DELETE("/:id", productCtrl.Delete)
 
-	// Product items routes
 	productItems := e.Group("/product-items")
 	productItems.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	productItems.Use(middleware.RequireAnyRole("seller", "admin"))
@@ -199,13 +205,11 @@ func main() {
 	userManagement.POST("/:user_id/roles/:role_name", roleCtrl.AssignRoleToUser)
 	userManagement.DELETE("/:user_id/roles/:role_name", roleCtrl.RemoveRoleFromUser)
 
-	// Role management endpoints
 	e.GET("/roles", roleCtrl.GetAll)
 	e.POST("/roles", roleCtrl.Create)
 	e.PUT("/roles/:id", roleCtrl.Update)
 	e.DELETE("/roles/:id", roleCtrl.Delete)
 
-	// User profile routes
 	userProfile := e.Group("/users/profile")
 	userProfile.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	userProfile.GET("", func(c echo.Context) error {
@@ -214,7 +218,6 @@ func main() {
 		if err != nil {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "user not found"})
 		}
-		// Get user with roles preloaded
 		user, err = userRepo.GetByID(userID)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get user with roles"})
@@ -227,11 +230,9 @@ func main() {
 		if err := c.Bind(&userData); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		}
-		// Update user logic would go here
 		return c.JSON(http.StatusOK, map[string]string{"message": "profile updated"})
 	})
 
-	// User conversations route
 	userConversations := e.Group("/users")
 	userConversations.Use(middleware.JWTMiddleware(cfg.JWTSecret))
 	userConversations.GET("/:userID/conversations", convCtrl.GetByUserID)
@@ -263,7 +264,6 @@ func main() {
 		return c.JSON(200, users)
 	})
 
-	// Admin user management endpoints
 	adminGroup.GET("/users/:id", func(c echo.Context) error {
 		userID := c.Param("id")
 		id, err := strconv.Atoi(userID)
@@ -300,7 +300,6 @@ func main() {
 		if err := userRepo.Update(user); err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update user"})
 		}
-		// Return updated user with roles
 		updated, _ := userRepo.GetByID(id)
 		return c.JSON(http.StatusOK, updated)
 	})
@@ -317,7 +316,6 @@ func main() {
 		return c.JSON(http.StatusOK, map[string]string{"message": "user deleted successfully"})
 	})
 
-	// Admin product management endpoints
 	adminGroup.GET("/products", func(c echo.Context) error {
 		products, err := productRepo.GetAll()
 		if err != nil {
@@ -336,7 +334,6 @@ func main() {
 		if err := c.Bind(&statusData); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		}
-		// Update product status logic would go here
 		return c.JSON(200, map[string]string{"message": "product status updated successfully"})
 	})
 
@@ -346,11 +343,9 @@ func main() {
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product ID"})
 		}
-		// Delete user logic would go here
 		return c.JSON(200, map[string]string{"message": "product deleted successfully"})
 	})
 
-	// Admin order management endpoints
 	adminGroup.GET("/orders", func(c echo.Context) error {
 		orders, err := orderRepo.GetAll()
 		if err != nil {
@@ -369,7 +364,6 @@ func main() {
 		if err := c.Bind(&statusData); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		}
-		// Update order status logic would go here
 		return c.JSON(200, map[string]string{"message": "order status updated successfully"})
 	})
 
@@ -379,13 +373,10 @@ func main() {
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid order ID"})
 		}
-		// Delete order logic would go here
 		return c.JSON(200, map[string]string{"message": "order deleted successfully"})
 	})
 
-	// Admin system management endpoints
 	adminGroup.GET("/stats", func(c echo.Context) error {
-		// Get system statistics
 		users, err := userRepo.GetAll()
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get users"})
@@ -414,7 +405,6 @@ func main() {
 	})
 
 	adminGroup.GET("/logs", func(c echo.Context) error {
-		// Get system logs
 		logs := []map[string]interface{}{
 			{"timestamp": time.Now().Format(time.RFC3339), "level": "INFO", "message": "System running normally"},
 			{"timestamp": time.Now().Add(-5 * time.Minute).Format(time.RFC3339), "level": "INFO", "message": "Database backup completed successfully"},
@@ -435,7 +425,6 @@ func main() {
 		if err := c.Bind(&settings); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		}
-		// Update system settings logic would go here
 		return c.JSON(200, map[string]string{"message": "settings updated successfully"})
 	})
 
@@ -448,8 +437,6 @@ func main() {
 		})
 	})
 
-	// Serve built frontend (SPA) and enable history API fallback
-	// Ensure `frontend/dist` exists (run frontend build) before starting the server
 	e.Static("/assets", "frontend/dist/assets")
 	e.File("/", "frontend/dist/index.html")
 	e.GET("/*", func(c echo.Context) error {
@@ -459,7 +446,6 @@ func main() {
 		return c.File("frontend/dist/index.html")
 	})
 
-	// Robust SPA fallback via HTTP error handler for any unmatched GET route
 	originalHTTPErrorHandler := e.HTTPErrorHandler
 	e.HTTPErrorHandler = func(err error, c echo.Context) {
 		if he, ok := err.(*echo.HTTPError); ok && he.Code == http.StatusNotFound {
@@ -482,10 +468,27 @@ func main() {
 		}
 	}()
 
+	// Start keep-alive service if enabled
+	var keepAliveService *services.KeepAliveService
+	if cfg.KeepAliveEnabled {
+		keepAliveService = services.NewKeepAliveService(
+			cfg.KeepAliveURL,
+			time.Duration(cfg.KeepAliveInterval)*time.Minute,
+		)
+		keepAliveService.Start()
+		log.Printf("Keep-alive service started with interval: %d minutes", cfg.KeepAliveInterval)
+	}
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	<-quit
+
+	// Stop keep-alive service gracefully
+	if keepAliveService != nil {
+		keepAliveService.Stop()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
