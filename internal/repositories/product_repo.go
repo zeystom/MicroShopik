@@ -84,6 +84,42 @@ func (r *productRepository) IncrementSoldCount(id int, delta int) error {
 		UpdateColumn("sold_count", gorm.Expr("sold_count + ?", delta)).Error
 }
 
+func (r *productRepository) CheckAvailabilityAndIncrementSoldCount(id int, delta int) (bool, error) {
+	var result struct {
+		IsAvailable  bool
+		RowsAffected int64
+	}
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var product domain.Product
+		if err := tx.Select("is_active, max_sales, sold_count").Where("id = ?", id).First(&product).Error; err != nil {
+			return err
+		}
+
+		isAvailable := product.IsActive && (product.MaxSales == 0 || product.SoldCount < product.MaxSales)
+		if !isAvailable {
+			result.IsAvailable = false
+			return nil
+		}
+
+		updateResult := tx.Model(&domain.Product{}).
+			Where("id = ? AND is_active = ? AND (max_sales = 0 OR sold_count < max_sales)",
+				id, true).
+			UpdateColumn("sold_count", gorm.Expr("sold_count + ?", delta))
+
+		if updateResult.Error != nil {
+			return updateResult.Error
+		}
+
+		result.RowsAffected = updateResult.RowsAffected
+		result.IsAvailable = result.RowsAffected > 0
+
+		return nil
+	})
+
+	return result.IsAvailable, err
+}
+
 func (r *productRepository) Find(params ProductQueryParams) ([]*domain.Product, error) {
 	query := r.db.Model(&domain.Product{})
 

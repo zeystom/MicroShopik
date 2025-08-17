@@ -4,7 +4,6 @@ import (
 	"MicroShopik/internal/domain"
 	"MicroShopik/internal/repositories"
 	"errors"
-	"gorm.io/gorm"
 )
 
 type OrderService interface {
@@ -135,6 +134,16 @@ func (s *orderService) ProcessOrder(orderID int) error {
 	tx := s.orderRepo.BeginTx()
 	defer tx.Rollback()
 
+	if order.ProductID != nil {
+		isAvailable, err := s.productRepo.CheckAvailabilityAndIncrementSoldCount(*order.ProductID, 1)
+		if err != nil {
+			return err
+		}
+		if !isAvailable {
+			return errors.New("product is not available or has reached maximum sales limit")
+		}
+	}
+
 	if order.ProductItemID != nil {
 		if err := s.productItemRepo.MarkAsUsedTx(tx, *order.ProductItemID); err != nil {
 			return err
@@ -143,15 +152,6 @@ func (s *orderService) ProcessOrder(orderID int) error {
 
 	if err := s.orderRepo.UpdateStatusTx(tx, orderID, "completed"); err != nil {
 		return err
-	}
-
-	// Increment sold_count atomically within the same transaction
-	if order.ProductID != nil {
-		if err := tx.Model(&domain.Product{}).
-			Where("id = ?", *order.ProductID).
-			UpdateColumn("sold_count", gorm.Expr("sold_count + ?", 1)).Error; err != nil {
-			return err
-		}
 	}
 
 	if order.CustomerID != nil {
@@ -206,15 +206,20 @@ func (s *orderService) ConfirmOrder(orderID int, customerID int) error {
 		return errors.New("order cannot be confirmed")
 	}
 
-	// Update order status first
 	if err := s.orderRepo.UpdateStatus(orderID, "confirmed"); err != nil {
 		return err
 	}
 
-	// Increment product sold count if applicable
 	if order.ProductID != nil {
-		if err := s.productRepo.IncrementSoldCount(*order.ProductID, 1); err != nil {
+		isAvailable, err := s.productRepo.CheckAvailabilityAndIncrementSoldCount(*order.ProductID, 1)
+		if err != nil {
 			return err
+		}
+		if !isAvailable {
+			if err := s.orderRepo.UpdateStatus(orderID, "cancelled"); err != nil {
+				return err
+			}
+			return errors.New("product is no longer available, order has been cancelled")
 		}
 	}
 

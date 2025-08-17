@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { apiService } from '@/services/api';
 import { Conversation, User, Order } from '@/types';
 import { MessageCircle, Users, Clock, AlertCircle } from 'lucide-react';
+import ProductStatusBadge from '@/components/ui/ProductStatusBadge';
 
 interface ConversationListProps {
   onConversationSelect: (conversation: Conversation) => void;
@@ -243,6 +244,10 @@ const ConversationList: React.FC<ConversationListProps> = ({
                 {conversation.messages.length} messages
               </span>
               <div className="flex items-center space-x-2">
+                {/* Показываем статус продукта если он неактивен */}
+                {conversation.product && !conversation.product.is_active && (
+                  <ProductStatusBadge isActive={conversation.product.is_active} />
+                )}
                 {orderStatus && (
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
                     orderStatus === 'completed' || orderStatus === 'confirmed'

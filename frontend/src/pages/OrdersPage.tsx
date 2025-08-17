@@ -97,6 +97,9 @@ const OrdersPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">#{order.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-gray-100">{order.product?.title || 'Product not found'}</div>
+                        {order.product && !order.product.is_active && (
+                          <div className="text-xs text-red-600 dark:text-red-400 mt-1">Product Inactive</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -118,10 +121,10 @@ const OrdersPage: React.FC = () => {
             </div>
           ) : (
             <div className="mt-4 text-center py-8 bg-white border border-gray-200 rounded-lg dark:bg-gray-900 dark:border-gray-800">
-              <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <ShoppingBag className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2 dark:text-gray-100">No purchases yet</h3>
               <p className="text-gray-600 mb-4 dark:text-gray-300">Start shopping to see your orders here</p>
-              <Link to="/products" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center">
+              <Link to="/products" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center dark:bg-blue-500 dark:hover:bg-blue-600">
                 <ShoppingBag className="mr-2 h-4 w-4" /> Browse Products
               </Link>
             </div>
@@ -157,7 +160,12 @@ const OrdersPage: React.FC = () => {
                 {sales.map((order) => (
                   <tr key={order.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">#{order.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{order.product?.title || 'Product'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {order.product?.title || 'Product'}
+                      {order.product && !order.product.is_active && (
+                        <div className="text-xs text-red-600 dark:text-red-400 mt-1">Product Inactive</div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">User #{order.customer_id}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

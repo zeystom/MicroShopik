@@ -34,6 +34,7 @@ type ProductCRUDRepository interface {
 
 	IsAvailable(id int) (bool, error)
 	IncrementSoldCount(id int, delta int) error
+	CheckAvailabilityAndIncrementSoldCount(id int, delta int) (bool, error)
 	Find(params ProductQueryParams) ([]*domain.Product, error)
 	Count(params ProductQueryParams) (int, error)
 	GetAll() ([]*domain.Product, error)

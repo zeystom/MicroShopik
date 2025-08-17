@@ -29,7 +29,9 @@ const HomePage: React.FC = () => {
           apiService.getProducts({ limit: 4 }),
           apiService.getCategories(),
         ])
-        setFeaturedProducts(productsData)
+        // Фильтруем только активные продукты для главной страницы
+        const activeProducts = productsData.filter((product: Product) => product.is_active)
+        setFeaturedProducts(activeProducts)
         setCategories(categoriesData)
       } catch (err: unknown) {
         const message =
@@ -108,8 +110,8 @@ const HomePage: React.FC = () => {
           
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600">Loading featured products...</span>
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+              <span className="ml-2 text-gray-600 dark:text-gray-300">Loading featured products...</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

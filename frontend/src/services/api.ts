@@ -62,10 +62,12 @@ class ApiService {
   }
 
   // Product endpoints
-  async getProducts(params?: { category_id?: number; search?: string; page?: number; limit?: number; seller_id?: number }) {
+  async getProducts(params?: { category_id?: number; search?: string; page?: number; limit?: number; seller_id?: number; is_active?: boolean }) {
     console.log('API getProducts called with params:', params);
     try {
-      const response = await this.api.get('/products', { params });
+      // По умолчанию показываем только активные продукты для обычных пользователей
+      const defaultParams = { is_active: true, ...params };
+      const response = await this.api.get('/products', { params: defaultParams });
       console.log('API getProducts response:', response.data);
       return response.data;
     } catch (error: unknown) {
@@ -78,10 +80,29 @@ class ApiService {
     }
   }
 
+  // Метод для получения продуктов без дефолтного фильтра is_active
+  async getProductsRaw(params?: { category_id?: number; search?: string; page?: number; limit?: number; seller_id?: number; is_active?: boolean }) {
+    console.log('API getProductsRaw called with params:', params);
+    try {
+      const response = await this.api.get('/products', { params });
+      console.log('API getProductsRaw response:', response.data);
+      return response.data;
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        const e = error as { response?: { data?: unknown; status?: number } };
+        console.error('API getProductsRaw error:', e.response?.data);
+        console.error('API getProductsRaw error status:', e.response?.status);
+      }
+      throw error;
+    }
+  }
+
   async getProduct(id: number) {
     const response = await this.api.get(`/products/${id}`);
     return response.data;
   }
+
+
 
   async createProduct(productData: Partial<Product>) {
     console.log('API createProduct called with:', productData);
@@ -164,6 +185,24 @@ class ApiService {
     }
   }
 
+  // Метод для получения всех продуктов продавца (включая неактивные)
+  async getSellerProducts(sellerId: number) {
+    console.log('API getSellerProducts called for seller ID:', sellerId);
+    try {
+      // Используем getProductsRaw для получения всех продуктов продавца без фильтра is_active
+      const response = await this.getProductsRaw({ seller_id: sellerId });
+      console.log('API getSellerProducts response:', response);
+      return response;
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        const e = error as { response?: { data?: unknown; status?: number } };
+        console.error('API getSellerProducts error:', e.response?.data);
+        console.error('API getSellerProducts error status:', e.response?.status);
+      }
+      throw error;
+    }
+  }
+
   async getOrder(id: number) {
     const response = await this.api.get(`/orders/${id}`);
     return response.data;
@@ -180,7 +219,8 @@ class ApiService {
   }
 
   async confirmOrder(id: number) {
-    const response = await this.api.post(`/orders/${id}/confirm`);
+    const response = await 
+    this.api.post(`/orders/${id}/confirm`);
     return response.data;
   }
 
@@ -370,9 +410,20 @@ class ApiService {
   }
 
   // Admin product management
-  async getAllProducts() {
-    const response = await this.api.get('/admin/products');
-    return response.data;
+  async getAllProducts(params?: { category_id?: number; search?: string; page?: number; limit?: number; seller_id?: number }) {
+    console.log('API getAllProducts called with params:', params);
+    try {
+      const response = await this.api.get('/admin/products', { params });
+      console.log('API getAllProducts response:', response.data);
+      return response.data;
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        const e = error as { response?: { data?: unknown; status?: number } };
+        console.error('API getAllProducts error:', e.response?.data);
+        console.error('API getAllProducts error status:', e.response?.status);
+      }
+      throw error;
+    }
   }
 
   async updateProductStatus(productId: number, isActive: boolean) {

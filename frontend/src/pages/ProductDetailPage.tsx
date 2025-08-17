@@ -128,15 +128,33 @@ const ProductDetailPage: React.FC = () => {
 
   if (error || !product) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh] bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
-          <p className="text-gray-600 mb-6">{error || 'The digital good you\'re looking for doesn\'t exist.'}</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4 dark:text-gray-100">Product Not Found</h1>
+          <p className="text-gray-600 mb-6 dark:text-gray-400">{error || 'The digital good you\'re looking for doesn\'t exist.'}</p>
           <Link
             to="/products"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600"
           >
             Browse Digital Goods
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // Проверяем, активен ли продукт
+  if (!product.is_active) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] bg-gray-50 dark:bg-gray-950">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4 dark:text-gray-100">Product Unavailable</h1>
+          <p className="text-gray-600 mb-6 dark:text-gray-400">This product is currently inactive and not available for purchase.</p>
+          <Link
+            to="/products"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600"
+          >
+            Browse Available Digital Goods
           </Link>
         </div>
       </div>

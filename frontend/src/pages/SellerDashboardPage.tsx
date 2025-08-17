@@ -5,6 +5,7 @@ import { Product, Order } from '@/types';
 import { apiService } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'react-hot-toast';
+import ProductStatusBadge from '@/components/ui/ProductStatusBadge';
 
 const SellerDashboardPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,7 +24,7 @@ const SellerDashboardPage = () => {
         // Try to fetch products first
         let productsData = [];
         try {
-          productsData = await apiService.getProducts({ seller_id: user?.id });
+          productsData = await apiService.getSellerProducts(user?.id || 0);
           setProducts(productsData);
         } catch (error) {
           console.error('Failed to fetch products:', error);

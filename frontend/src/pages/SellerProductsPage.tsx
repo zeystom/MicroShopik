@@ -20,7 +20,7 @@ const SellerProductsPage = () => {
       try {
         setIsLoading(true);
         const [productsData, categoriesData] = await Promise.all([
-          apiService.getProducts({ seller_id: user?.id }),
+          apiService.getSellerProducts(user?.id || 0),
           apiService.getCategories()
         ]);
         setProducts(productsData);

@@ -11,6 +11,7 @@ import { apiService } from '@/services/api'
 import { Product, Category } from '@/types'
 import { toast } from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
+import ProductStatusBadge from '@/components/ui/ProductStatusBadge'
 
 const ProductsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -43,8 +44,13 @@ const ProductsPage: React.FC = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true)
+        // Админы видят все продукты, обычные пользователи только активные
+        const productsPromise = isAdmin 
+          ? apiService.getAllProducts()
+          : apiService.getProducts()
+        
         const [productsData, categoriesData] = await Promise.all([
-          apiService.getProducts(),
+          productsPromise,
           apiService.getCategories()
         ])
         setProducts(productsData)
@@ -62,7 +68,7 @@ const ProductsPage: React.FC = () => {
     }
 
     fetchData()
-  }, [])
+  }, [isAdmin])
 
   // Update URL when filters change
   const updateURL = (category: string, search: string) => {
@@ -104,12 +110,17 @@ const ProductsPage: React.FC = () => {
   ]
 
   const filteredProducts = products
-    .filter(product => 
-      (selectedCategory === 'all' || product.category_id.toString() === selectedCategory) &&
-      (searchTerm === '' || 
-        product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
+    .filter(product => {
+      // Обычные пользователи видят только активные продукты
+      if (!isAdmin && !product.is_active) {
+        return false
+      }
+      
+      return (selectedCategory === 'all' || product.category_id.toString() === selectedCategory) &&
+        (searchTerm === '' || 
+          product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    })
     .sort((a, b) => {
       switch (sortBy) {
         case 'price':
@@ -266,16 +277,33 @@ const ProductsPage: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Status indicator for inactive products */}
+                  {!product.is_active && (
+                    <div className="mb-4">
+                      <ProductStatusBadge isActive={product.is_active} />
+                    </div>
+                  )}
+
                   {/* Price and Action */}
                   <div className="flex items-center justify-between">
                     <span className="text-2xl font-bold text-blue-600">${(product.price / 100).toFixed(2)}</span>
                     <span className="text-sm text-gray-500 mr-2 dark:text-gray-400">{sellerName ? `by ${sellerName}` : ''}</span>
-                    <Link
-                      to={`/products/${product.id}`}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600"
-                    >
-                      View Details
-                    </Link>
+                    {product.is_active ? (
+                      <Link
+                        to={`/products/${product.id}`}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600"
+                      >
+                        View Details
+                      </Link>
+                    ) : (
+                      <button
+                        disabled
+                        className="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed dark:bg-gray-600"
+                        title="This product is currently inactive"
+                      >
+                        Unavailable
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -287,11 +315,11 @@ const ProductsPage: React.FC = () => {
       {/* No Results */}
       {!isLoading && !error && filteredProducts.length === 0 && (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="w-8 h-8 text-gray-400" />
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 dark:bg-gray-800">
+            <Search className="w-8 h-8 text-gray-400 dark:text-gray-500" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No digital goods found</h3>
-          <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2 dark:text-gray-100">No digital goods found</h3>
+          <p className="text-gray-600 dark:text-gray-400">Try adjusting your search or filter criteria</p>
         </div>
       )}
     </div>

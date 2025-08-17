@@ -37,7 +37,6 @@ func (k *KeepAliveService) Start() {
 		ticker := time.NewTicker(k.interval)
 		defer ticker.Stop()
 
-		// Сразу делаем первый пинг
 		k.ping()
 
 		for {

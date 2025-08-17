@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useTheme } from '@/hooks/useTheme'
 import { Loader2, ArrowLeft, MessageCircle, CheckCircle2, XCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import ProductStatusBadge from '@/components/ui/ProductStatusBadge'
 
 const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -132,6 +133,11 @@ const OrderDetailPage: React.FC = () => {
                   <div className="text-gray-900 dark:text-gray-100 font-medium">{order.product.title}</div>
                   <div className="text-gray-600 dark:text-gray-400">Seller ID: {order.product.seller_id}</div>
                   <div className="text-gray-900 dark:text-gray-100 mt-2">Price: ${((order.product.price || 0) / 100).toFixed(2)}</div>
+                  {!order.product.is_active && (
+                    <div className="mt-2">
+                      <ProductStatusBadge isActive={order.product.is_active} />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-gray-600 dark:text-gray-400">No product info</div>
