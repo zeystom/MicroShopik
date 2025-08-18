@@ -6,6 +6,7 @@ import (
 	"MicroShopik/internal/container"
 	"MicroShopik/internal/database"
 	"MicroShopik/internal/middleware"
+	keepalive "MicroShopik/internal/services/domain"
 	"MicroShopik/scripts"
 	"context"
 	"errors"
@@ -63,6 +64,14 @@ func main() {
 	setupStaticFiles(e)
 
 	setupErrorHandler(e)
+
+	// Start periodic keep-alive pings to prevent idle shutdowns
+	if cfg.KeepAliveEnabled {
+		interval := time.Duration(cfg.KeepAliveInterval) * time.Minute
+		ka := keepalive.NewKeepAliveService(cfg.KeepAliveURL, interval)
+		ka.Start()
+		defer ka.Stop()
+	}
 
 	startServer(e)
 }
