@@ -11,8 +11,7 @@ type orderRepository struct {
 	db *gorm.DB
 }
 
-func NewOrderRepository(db *gorm.DB) OrderRepository {
-
+func NewOrderRepository(db *gorm.DB) domain.OrderRepository {
 	return &orderRepository{db: db}
 }
 
@@ -22,7 +21,7 @@ func (r *orderRepository) Create(order *domain.Order) error {
 
 func (r *orderRepository) GetByID(id int) (*domain.Order, error) {
 	var order domain.Order
-	err := r.db.Preload("Customer").Preload("Product").Preload("ProductItem").Preload("Messages.Sender").
+	err := r.db.Preload("Customer").Preload("Product").Preload("Messages.Sender").
 		Where("id = ?", id).First(&order).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -35,7 +34,7 @@ func (r *orderRepository) GetByID(id int) (*domain.Order, error) {
 
 func (r *orderRepository) GetByCustomerID(customerID int) ([]*domain.Order, error) {
 	var orders []*domain.Order
-	err := r.db.Preload("Product").Preload("ProductItem").
+	err := r.db.Preload("Product").
 		Where("customer_id = ?", customerID).
 		Order("created_at DESC").
 		Find(&orders).Error
@@ -47,7 +46,7 @@ func (r *orderRepository) GetByCustomerID(customerID int) ([]*domain.Order, erro
 
 func (r *orderRepository) GetBySellerID(sellerID int) ([]*domain.Order, error) {
 	var orders []*domain.Order
-	err := r.db.Preload("Product").Preload("ProductItem").Preload("Customer").
+	err := r.db.Preload("Product").Preload("Customer").
 		Joins("JOIN products ON orders.product_id = products.id").
 		Where("products.seller_id = ?", sellerID).
 		Order("orders.created_at DESC").
@@ -60,7 +59,7 @@ func (r *orderRepository) GetBySellerID(sellerID int) ([]*domain.Order, error) {
 
 func (r *orderRepository) GetByStatus(status string) ([]*domain.Order, error) {
 	var orders []*domain.Order
-	err := r.db.Preload("Customer").Preload("Product").Preload("ProductItem").
+	err := r.db.Preload("Customer").Preload("Product").
 		Where("status = ?", status).
 		Order("created_at DESC").
 		Find(&orders).Error
@@ -86,7 +85,7 @@ func (r *orderRepository) UpdateStatus(id int, status string) error {
 
 func (r *orderRepository) GetByProductID(productID int) ([]*domain.Order, error) {
 	var orders []*domain.Order
-	err := r.db.Preload("Customer").Preload("ProductItem").
+	err := r.db.Preload("Customer").
 		Where("product_id = ?", productID).
 		Order("created_at DESC").
 		Find(&orders).Error
@@ -98,18 +97,26 @@ func (r *orderRepository) GetByProductID(productID int) ([]*domain.Order, error)
 
 func (r *orderRepository) GetAll() ([]*domain.Order, error) {
 	var orders []*domain.Order
-	err := r.db.Preload("Product").Preload("ProductItem").Preload("Customer").
+	err := r.db.Preload("Product").Preload("Customer").
 		Order("created_at DESC").
 		Find(&orders).Error
 	return orders, err
 }
 
-func (r *orderRepository) BeginTx() *gorm.DB {
-	return r.db.Begin()
+func (r *orderRepository) BeginTx() (*gorm.DB, error) {
+	return r.db.Begin(), nil
 }
 
 func (r *orderRepository) UpdateStatusTx(tx *gorm.DB, id int, status string) error {
 	return tx.Model(&domain.Order{}).
 		Where("id = ?", id).
 		UpdateColumn("status", status).Error
+}
+
+func (r *orderRepository) Commit(tx *gorm.DB) error {
+	return tx.Commit().Error
+}
+
+func (r *orderRepository) Rollback(tx *gorm.DB) error {
+	return tx.Rollback().Error
 }

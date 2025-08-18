@@ -79,7 +79,7 @@ const SellerDashboardPage = () => {
   if (!user) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">Please log in to view your seller dashboard.</p>
+        <p className="text-gray-600 dark:text-gray-300">Please log in to view your seller dashboard.</p>
       </div>
     );
   }
@@ -90,8 +90,8 @@ const SellerDashboardPage = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Seller Dashboard</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Seller Dashboard</h1>
+            <p className="text-gray-600 mt-1 dark:text-gray-300">
               Manage your products and track your sales performance
             </p>
           </div>
@@ -104,13 +104,11 @@ const SellerDashboardPage = () => {
           </Link>
         </div>
 
-
-
         {/* Empty State */}
-        <div className="text-center py-12">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-10 text-center dark:bg-gray-900 dark:border-gray-800">
           <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No products yet</h3>
-          <p className="text-gray-600 mb-4">Start selling by adding your first product</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2 dark:text-gray-100">No products yet</h3>
+          <p className="text-gray-600 mb-4 dark:text-gray-300">Start selling by adding your first product</p>
           <Link
             to="/seller/products/new"
             className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center"

@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { config } from '@/config';
-import { Product, Order, Conversation, User, ProductItem, Role, Category } from '@/types';
+import { Product, Order, Conversation, User, Role, Category } from '@/types';
 
 class ApiService {
   private api: AxiosInstance;
@@ -277,28 +277,6 @@ class ApiService {
 
   async updateProfile(userData: Partial<User>) {
     const response = await this.api.put('/users/profile', userData);
-    return response.data;
-  }
-
-  // Product items endpoints
-  async getProductItems(productId?: number) {
-    const url = productId ? `/product-items/product/${productId}` : '/product-items';
-    const response = await this.api.get(url);
-    return response.data;
-  }
-
-  async createProductItem(productItemData: Partial<ProductItem>) {
-    const response = await this.api.post('/product-items', productItemData);
-    return response.data;
-  }
-
-  async updateProductItem(id: number, productItemData: Partial<ProductItem>) {
-    const response = await this.api.put(`/product-items/${id}`, productItemData);
-    return response.data;
-  }
-
-  async deleteProductItem(id: number) {
-    const response = await this.api.delete(`/product-items/${id}`);
     return response.data;
   }
 

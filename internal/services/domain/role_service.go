@@ -1,8 +1,7 @@
-package services
+package domain
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/repositories"
 	"errors"
 )
 
@@ -18,11 +17,11 @@ type RoleService interface {
 }
 
 type roleService struct {
-	roleRepo repositories.RoleRepository
-	userRepo repositories.UserRepository
+	roleRepo domain.RoleRepository
+	userRepo domain.UserRepository
 }
 
-func NewRoleService(roleRepo repositories.RoleRepository, userRepo repositories.UserRepository) RoleService {
+func NewRoleService(roleRepo domain.RoleRepository, userRepo domain.UserRepository) RoleService {
 	return &roleService{
 		roleRepo: roleRepo,
 		userRepo: userRepo,

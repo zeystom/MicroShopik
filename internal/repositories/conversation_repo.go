@@ -11,7 +11,7 @@ type conversationRepository struct {
 	db *gorm.DB
 }
 
-func NewConversationRepository(db *gorm.DB) ConversationRepository {
+func NewConversationRepository(db *gorm.DB) domain.ConversationRepository {
 	return &conversationRepository{db: db}
 }
 

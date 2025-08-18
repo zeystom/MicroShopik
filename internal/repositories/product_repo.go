@@ -11,7 +11,7 @@ type productRepository struct {
 	db *gorm.DB
 }
 
-func NewProductRepository(db *gorm.DB) ProductCRUDRepository {
+func NewProductRepository(db *gorm.DB) domain.ProductRepository {
 	return &productRepository{db: db}
 }
 
@@ -32,7 +32,7 @@ func (r *productRepository) GetById(id int) (*domain.Product, error) {
 	return &product, nil
 }
 
-func (r *productRepository) Update(id int, data ProductUpdateData) error {
+func (r *productRepository) Update(id int, data domain.ProductUpdateData) error {
 	updates := make(map[string]interface{})
 
 	if data.Title != nil {
@@ -84,6 +84,12 @@ func (r *productRepository) IncrementSoldCount(id int, delta int) error {
 		UpdateColumn("sold_count", gorm.Expr("sold_count + ?", delta)).Error
 }
 
+func (r *productRepository) ReserveProduct(id int) error {
+	return r.db.Model(&domain.Product{}).
+		Where("id = ?", id).
+		UpdateColumn("sold_count", gorm.Expr("sold_count + ?", 1)).Error
+}
+
 func (r *productRepository) CheckAvailabilityAndIncrementSoldCount(id int, delta int) (bool, error) {
 	var result struct {
 		IsAvailable  bool
@@ -120,7 +126,7 @@ func (r *productRepository) CheckAvailabilityAndIncrementSoldCount(id int, delta
 	return result.IsAvailable, err
 }
 
-func (r *productRepository) Find(params ProductQueryParams) ([]*domain.Product, error) {
+func (r *productRepository) Find(params domain.ProductQueryParams) ([]*domain.Product, error) {
 	query := r.db.Model(&domain.Product{})
 
 	if params.SellerId != nil {
@@ -160,7 +166,7 @@ func (r *productRepository) Find(params ProductQueryParams) ([]*domain.Product, 
 	return products, err
 }
 
-func (r *productRepository) Count(params ProductQueryParams) (int, error) {
+func (r *productRepository) Count(params domain.ProductQueryParams) (int, error) {
 	query := r.db.Model(&domain.Product{})
 
 	if params.SellerId != nil {
@@ -193,5 +199,11 @@ func (r *productRepository) Count(params ProductQueryParams) (int, error) {
 func (r *productRepository) GetAll() ([]*domain.Product, error) {
 	var products []*domain.Product
 	err := r.db.Preload("Category").Find(&products).Error
+	return products, err
+}
+
+func (r *productRepository) GetBySellerID(sellerID int) ([]*domain.Product, error) {
+	var products []*domain.Product
+	err := r.db.Preload("Category").Where("seller_id = ?", sellerID).Find(&products).Error
 	return products, err
 }

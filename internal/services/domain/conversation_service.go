@@ -1,8 +1,7 @@
-package services
+package domain
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/repositories"
 	"errors"
 	"fmt"
 )
@@ -11,7 +10,7 @@ type ConversationService interface {
 	Create(conversation *domain.Conversation, participantIDs []int) error
 	GetByID(id int) (*domain.Conversation, error)
 	GetByUserID(userID int) ([]*domain.Conversation, error)
-	GetByProductID(productID int) ([]*domain.Conversation, error) // Новый метод для поиска по товару
+	GetByProductID(productID int) ([]*domain.Conversation, error)
 	Update(conversation *domain.Conversation) error
 	Delete(id int) error
 	AddParticipant(conversationID, userID int) error
@@ -20,12 +19,12 @@ type ConversationService interface {
 }
 
 type conversationService struct {
-	conversationRepo repositories.ConversationRepository
-	participantRepo  repositories.ParticipantRepository
-	userRepo         repositories.UserRepository
+	conversationRepo domain.ConversationRepository
+	participantRepo  domain.ParticipantRepository
+	userRepo         domain.UserRepository
 }
 
-func NewConversationService(cRepo repositories.ConversationRepository, pRepo repositories.ParticipantRepository, uRepo repositories.UserRepository) ConversationService {
+func NewConversationService(cRepo domain.ConversationRepository, pRepo domain.ParticipantRepository, uRepo domain.UserRepository) ConversationService {
 	return &conversationService{
 		conversationRepo: cRepo,
 		participantRepo:  pRepo,

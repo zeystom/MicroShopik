@@ -57,8 +57,6 @@ definitions:
         type: integer
       product_id:
         type: integer
-      product_item_id:
-        type: integer
       status:
         type: string
       created_at:

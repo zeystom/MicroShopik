@@ -10,7 +10,7 @@ type participantRepository struct {
 	db *gorm.DB
 }
 
-func NewParticipantRepository(db *gorm.DB) ParticipantRepository {
+func NewParticipantRepository(db *gorm.DB) domain.ParticipantRepository {
 	return &participantRepository{db: db}
 }
 

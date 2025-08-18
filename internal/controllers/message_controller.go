@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/services"
+	domain2 "MicroShopik/internal/services/domain"
 	"net/http"
 	"strconv"
 
@@ -10,10 +10,10 @@ import (
 )
 
 type MessageController struct {
-	messageService services.MessageService
+	messageService domain2.MessageService
 }
 
-func NewMessageController(s services.MessageService) *MessageController {
+func NewMessageController(s domain2.MessageService) *MessageController {
 	return &MessageController{messageService: s}
 }
 
@@ -90,7 +90,7 @@ func (mc *MessageController) GetByConversationID(c echo.Context) error {
 		offset = 0
 	}
 
-	messages, err := mc.messageService.GetByConversationID(conversationID, limit, offset)
+	messages, err := mc.messageService.GetByConversationID(conversationID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}

@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/services"
+	domain2 "MicroShopik/internal/services/domain"
 	"net/http"
 	"strconv"
 
@@ -10,10 +10,10 @@ import (
 )
 
 type ParticipantController struct {
-	participantService services.ParticipantService
+	participantService domain2.ParticipantService
 }
 
-func NewParticipantController(s services.ParticipantService) *ParticipantController {
+func NewParticipantController(s domain2.ParticipantService) *ParticipantController {
 	return &ParticipantController{participantService: s}
 }
 

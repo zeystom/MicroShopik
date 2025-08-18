@@ -1,8 +1,7 @@
-package services
+package domain
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/repositories"
 	"errors"
 )
 
@@ -11,17 +10,18 @@ type ParticipantService interface {
 	GetByConversationID(conversationID int) ([]*domain.Participant, error)
 	GetByUserID(userID int) ([]*domain.Participant, error)
 	Delete(conversationID, userID int) error
+	DeleteByConversationAndUser(conversationID, userID int) error
 	IsParticipant(conversationID, userID int) (bool, error)
 	GetConversationParticipants(conversationID int) ([]*domain.Participant, error)
 }
 
 type participantService struct {
-	participantRepo  repositories.ParticipantRepository
-	conversationRepo repositories.ConversationRepository
-	userRepo         repositories.UserRepository
+	participantRepo  domain.ParticipantRepository
+	conversationRepo domain.ConversationRepository
+	userRepo         domain.UserRepository
 }
 
-func NewParticipantService(pRepo repositories.ParticipantRepository, cRepo repositories.ConversationRepository, uRepo repositories.UserRepository) ParticipantService {
+func NewParticipantService(pRepo domain.ParticipantRepository, cRepo domain.ConversationRepository, uRepo domain.UserRepository) ParticipantService {
 	return &participantService{
 		participantRepo:  pRepo,
 		conversationRepo: cRepo,
@@ -72,4 +72,8 @@ func (s *participantService) IsParticipant(conversationID, userID int) (bool, er
 
 func (s *participantService) GetConversationParticipants(conversationID int) ([]*domain.Participant, error) {
 	return s.participantRepo.GetByConversationID(conversationID)
+}
+
+func (s *participantService) DeleteByConversationAndUser(conversationID, userID int) error {
+	return s.participantRepo.Delete(conversationID, userID)
 }

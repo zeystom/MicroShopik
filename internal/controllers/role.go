@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/services"
+	domain2 "MicroShopik/internal/services/domain"
 	"net/http"
 	"strconv"
 
@@ -10,10 +10,10 @@ import (
 )
 
 type RoleController struct {
-	roleService services.RoleService
+	roleService domain2.RoleService
 }
 
-func NewRoleController(s services.RoleService) *RoleController {
+func NewRoleController(s domain2.RoleService) *RoleController {
 	return &RoleController{roleService: s}
 }
 

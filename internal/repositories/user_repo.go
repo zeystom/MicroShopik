@@ -12,7 +12,7 @@ type userRepository struct {
 	db *gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) UserRepository {
+func NewUserRepository(db *gorm.DB) domain.UserRepository {
 	return &userRepository{db: db}
 }
 
@@ -103,5 +103,8 @@ func (r *userRepository) GetAll() ([]domain.User, error) {
 }
 
 func (r *userRepository) Update(user *domain.User) error {
-	return r.db.Save(user).Error
+	return r.db.Model(&domain.User{}).
+		Where("id = ?", user.ID).
+		Omit("created_at", "last_login").
+		Updates(user).Error
 }

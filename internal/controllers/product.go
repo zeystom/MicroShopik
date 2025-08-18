@@ -2,8 +2,7 @@ package controllers
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/repositories"
-	"MicroShopik/internal/services"
+	"MicroShopik/internal/services/application"
 	"net/http"
 	"strconv"
 
@@ -11,11 +10,11 @@ import (
 )
 
 type ProductController struct {
-	productService services.ProductService
+	productAppService *application.ProductApplicationService
 }
 
-func NewProductController(s services.ProductService) *ProductController {
-	return &ProductController{productService: s}
+func NewProductController(s *application.ProductApplicationService) *ProductController {
+	return &ProductController{productAppService: s}
 }
 
 // @Summary Create a new product
@@ -31,19 +30,17 @@ func NewProductController(s services.ProductService) *ProductController {
 // @Router /products [post]
 
 func (pc *ProductController) Create(c echo.Context) error {
-
 	var product domain.Product
 
 	if err := c.Bind(&product); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	userID := c.Get("user_id").(int)
-	id, err := pc.productService.Create(&product, userID)
-	if err != nil {
+
+	if err := pc.productAppService.CreateProductWithValidation(&product, userID); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	product.ID = id
 	return c.JSON(http.StatusCreated, product)
 }
 
@@ -62,7 +59,7 @@ func (pc *ProductController) GetById(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product id"})
 	}
 
-	product, err := pc.productService.GetById(id)
+	product, err := pc.productAppService.GetProductWithFullDetails(id)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	}
@@ -97,7 +94,8 @@ func (pc *ProductController) Update(c echo.Context) error {
 	}
 
 	userID := c.Get("user_id").(int)
-	err = pc.productService.Update(id, &product, userID)
+	product.ID = id
+	err = pc.productAppService.UpdateProductWithInventoryCheck(&product, userID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -122,7 +120,7 @@ func (pc *ProductController) Delete(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product id"})
 	}
-	err = pc.productService.Delete(id, c.Get("user_id").(int))
+	err = pc.productAppService.DeactivateProductWithOrderCheck(id, c.Get("user_id").(int))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -146,9 +144,13 @@ func (pc *ProductController) IsAvailable(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product id"})
 	}
 
-	available, err := pc.productService.IsAvailable(id)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	err = pc.productAppService.ValidateProductForPurchase(id, 0)
+	available := err == nil
+	if !available {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"available":  false,
+			"product_id": id,
+		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -175,7 +177,7 @@ func (pc *ProductController) IsAvailable(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Router /products [get]
 func (pc *ProductController) Find(c echo.Context) error {
-	params := repositories.ProductQueryParams{}
+	params := domain.ProductQueryParams{}
 
 	if sellerID := c.QueryParam("seller_id"); sellerID != "" {
 		if id, err := strconv.Atoi(sellerID); err == nil {
@@ -232,7 +234,7 @@ func (pc *ProductController) Find(c echo.Context) error {
 		}
 	}
 
-	products, err := pc.productService.Find(params)
+	products, err := pc.productAppService.FindProducts(params)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -256,7 +258,7 @@ func (pc *ProductController) Find(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Router /products/count [get]
 func (pc *ProductController) Count(c echo.Context) error {
-	params := repositories.ProductQueryParams{}
+	params := domain.ProductQueryParams{}
 
 	if sellerID := c.QueryParam("seller_id"); sellerID != "" {
 		if id, err := strconv.Atoi(sellerID); err == nil {
@@ -298,7 +300,7 @@ func (pc *ProductController) Count(c echo.Context) error {
 		params.SearchQuery = &search
 	}
 
-	count, err := pc.productService.Count(params)
+	count, err := pc.productAppService.CountProducts(params)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}

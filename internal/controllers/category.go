@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/services"
+	domain2 "MicroShopik/internal/services/domain"
 	"net/http"
 	"strconv"
 
@@ -10,10 +10,10 @@ import (
 )
 
 type CategoryController struct {
-	categoryService services.CategoryService
+	categoryService domain2.CategoryService
 }
 
-func NewCategoryController(s services.CategoryService) *CategoryController {
+func NewCategoryController(s domain2.CategoryService) *CategoryController {
 	return &CategoryController{categoryService: s}
 }
 

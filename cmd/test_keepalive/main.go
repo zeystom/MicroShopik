@@ -1,7 +1,7 @@
 package main
 
 import (
-	"MicroShopik/internal/services"
+	"MicroShopik/internal/services/domain"
 	"log"
 	"time"
 )
@@ -10,7 +10,7 @@ func main() {
 	log.Println("Testing keep-alive service...")
 
 	// Создаем сервис с интервалом 30 секунд для тестирования
-	keepAliveService := services.NewKeepAliveService(
+	keepAliveService := domain.NewKeepAliveService(
 		"http://localhost:8080",
 		30*time.Second,
 	)

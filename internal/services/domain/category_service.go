@@ -1,8 +1,7 @@
-package services
+package domain
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/repositories"
 	"errors"
 	"time"
 )
@@ -12,14 +11,16 @@ type CategoryService interface {
 	Update(category *domain.Category) error
 	Delete(category *domain.Category) error
 	GetCategoryById(id int) (*domain.Category, error)
+	GetByID(id int) (*domain.Category, error)
 	GetAllCategories() (*[]domain.Category, error)
+	ValidateCategoryExists(categoryID int) error
 }
 
 type categoryService struct {
-	categoryRepo repositories.CategoryRepository
+	categoryRepo domain.CategoryRepository
 }
 
-func NewCategoryService(c repositories.CategoryRepository) CategoryService {
+func NewCategoryService(c domain.CategoryRepository) CategoryService {
 	return &categoryService{categoryRepo: c}
 }
 
@@ -58,4 +59,16 @@ func (c *categoryService) GetCategoryById(id int) (*domain.Category, error) {
 }
 func (c *categoryService) GetAllCategories() (*[]domain.Category, error) {
 	return c.categoryRepo.GetAllCategories()
+}
+
+func (c *categoryService) GetByID(id int) (*domain.Category, error) {
+	return c.categoryRepo.GetCategoryById(id)
+}
+
+func (c *categoryService) ValidateCategoryExists(categoryID int) error {
+	_, err := c.categoryRepo.GetCategoryById(categoryID)
+	if err != nil {
+		return errors.New("category not found")
+	}
+	return nil
 }

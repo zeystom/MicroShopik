@@ -1,15 +1,14 @@
-package services
+package domain
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/repositories"
 	"errors"
 )
 
 type MessageService interface {
 	Create(message *domain.Message) error
 	GetByID(id int) (*domain.Message, error)
-	GetByConversationID(conversationID int, limit, offset int) ([]*domain.Message, error)
+	GetByConversationID(conversationID int) ([]*domain.Message, error)
 	GetByOrderID(orderID int) ([]*domain.Message, error)
 	Update(message *domain.Message) error
 	Delete(id int) error
@@ -18,13 +17,13 @@ type MessageService interface {
 }
 
 type messageService struct {
-	messageRepo      repositories.MessageRepository
-	conversationRepo repositories.ConversationRepository
-	participantRepo  repositories.ParticipantRepository
-	orderRepo        repositories.OrderRepository
+	messageRepo      domain.MessageRepository
+	conversationRepo domain.ConversationRepository
+	participantRepo  domain.ParticipantRepository
+	orderRepo        domain.OrderRepository
 }
 
-func NewMessageService(mRepo repositories.MessageRepository, cRepo repositories.ConversationRepository, pRepo repositories.ParticipantRepository, oRepo repositories.OrderRepository) MessageService {
+func NewMessageService(mRepo domain.MessageRepository, cRepo domain.ConversationRepository, pRepo domain.ParticipantRepository, oRepo domain.OrderRepository) MessageService {
 	return &messageService{
 		messageRepo:      mRepo,
 		conversationRepo: cRepo,
@@ -64,8 +63,8 @@ func (s *messageService) GetByID(id int) (*domain.Message, error) {
 	return s.messageRepo.GetByID(id)
 }
 
-func (s *messageService) GetByConversationID(conversationID int, limit, offset int) ([]*domain.Message, error) {
-	return s.messageRepo.GetByConversationID(conversationID, limit, offset)
+func (s *messageService) GetByConversationID(conversationID int) ([]*domain.Message, error) {
+	return s.messageRepo.GetByConversationID(conversationID, 0, 0)
 }
 
 func (s *messageService) GetByOrderID(orderID int) ([]*domain.Message, error) {
@@ -87,7 +86,7 @@ func (s *messageService) GetSystemMessages(conversationID int) ([]*domain.Messag
 func (s *messageService) SendSystemMessage(conversationID int, text string, orderID *int) error {
 	message := &domain.Message{
 		ConversationID: conversationID,
-		Text:           text,
+		Content:        text,
 		IsSystem:       true,
 		OrderID:        orderID,
 	}

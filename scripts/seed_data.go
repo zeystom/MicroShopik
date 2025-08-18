@@ -147,11 +147,12 @@ func runSeedData(_ *configs.Config) error {
 	}
 
 	for i := range products {
-		_, err := productRepo.Create(&products[i])
+		productID, err := productRepo.Create(&products[i])
 		if err != nil {
 			log.Printf("Failed to create product %s: %v", products[i].Title, err)
 		} else {
-			log.Printf("Created product: %s", products[i].Title)
+			log.Printf("Created product: %s with ID: %d", products[i].Title, productID)
+
 		}
 	}
 

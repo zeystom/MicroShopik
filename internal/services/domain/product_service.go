@@ -1,8 +1,7 @@
-package services
+package domain
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/repositories"
 	"errors"
 	"time"
 )
@@ -12,17 +11,21 @@ type ProductService interface {
 	GetById(id int) (*domain.Product, error)
 	Update(id int, product *domain.Product, userID int) error
 	Delete(id int, userID int) error
-	Find(params repositories.ProductQueryParams) ([]*domain.Product, error)
-	Count(params repositories.ProductQueryParams) (int, error)
+	Find(params domain.ProductQueryParams) ([]*domain.Product, error)
+	Count(params domain.ProductQueryParams) (int, error)
 	IsAvailable(id int) (bool, error)
 	IncrementSoldCount(id int, delta int) error
+	ValidateProductForOrder(productID int, customerID *int) error
+	ValidateProductExists(productID int) error
+	ReserveProduct(productID int) error
+	ReleaseProduct(productID int) error
 }
 
 type productService struct {
-	productRepo repositories.ProductCRUDRepository
+	productRepo domain.ProductRepository
 }
 
-func NewProductService(r repositories.ProductCRUDRepository) ProductService {
+func NewProductService(r domain.ProductRepository) ProductService {
 	return &productService{productRepo: r}
 }
 
@@ -65,7 +68,7 @@ func (s *productService) Update(id int, product *domain.Product, userID int) err
 		return errors.New("unauthorized: you can only update your own products")
 	}
 
-	updateData := repositories.ProductUpdateData{}
+	updateData := domain.ProductUpdateData{}
 	if product.Title != "" {
 		updateData.Title = &product.Title
 	}
@@ -122,17 +125,60 @@ func (s *productService) IncrementSoldCount(id int, delta int) error {
 		return err
 	}
 
-	if product.SoldCount+delta > product.MaxSales {
-		return errors.New("cannot increment sold count: would exceed max sales limit")
+	if product.MaxSales > 0 {
+		if product.SoldCount+delta > product.MaxSales {
+			return errors.New("cannot increment sold count: would exceed max sales limit")
+		}
 	}
 
 	return s.productRepo.IncrementSoldCount(id, delta)
 }
 
-func (s *productService) Find(params repositories.ProductQueryParams) ([]*domain.Product, error) {
+func (s *productService) Find(params domain.ProductQueryParams) ([]*domain.Product, error) {
 	return s.productRepo.Find(params)
 }
 
-func (s *productService) Count(params repositories.ProductQueryParams) (int, error) {
+func (s *productService) Count(params domain.ProductQueryParams) (int, error) {
 	return s.productRepo.Count(params)
+}
+
+func (s *productService) ValidateProductForOrder(productID int, customerID *int) error {
+	product, err := s.productRepo.GetById(productID)
+	if err != nil {
+		return errors.New("product not found")
+	}
+
+	// Проверяем, что покупатель не пытается купить свой собственный товар
+	if customerID != nil && product.SellerID == *customerID {
+		return errors.New("cannot purchase your own product")
+	}
+
+	// Проверяем доступность товара
+	available, err := s.IsAvailable(productID)
+	if err != nil {
+		return err
+	}
+	if !available {
+		return errors.New("product is not available")
+	}
+
+	return nil
+}
+
+func (s *productService) ReserveProduct(productID int) error {
+	// Резервируем продукт без проверки доступности
+	// так как заказ уже создан и продукт был доступен на момент создания
+	return s.productRepo.ReserveProduct(productID)
+}
+
+func (s *productService) ValidateProductExists(productID int) error {
+	_, err := s.productRepo.GetById(productID)
+	if err != nil {
+		return errors.New("product not found")
+	}
+	return nil
+}
+
+func (s *productService) ReleaseProduct(productID int) error {
+	return nil
 }

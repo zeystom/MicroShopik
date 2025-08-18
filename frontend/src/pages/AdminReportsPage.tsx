@@ -70,7 +70,7 @@ const AdminReportsPage = () => {
     }, 0);
 
     const totalOrders = filteredOrders.length;
-    const completedOrders = filteredOrders.filter(order => order.status === 'completed').length;
+    const confirmedOrders = filteredOrders.filter(order => order.status === 'confirmed').length;
     const pendingOrders = filteredOrders.filter(order => order.status === 'pending').length;
     
     const newUsers = users.filter(user => {
@@ -85,12 +85,12 @@ const AdminReportsPage = () => {
     return {
       totalRevenue,
       totalOrders,
-      completedOrders,
+      confirmedOrders,
       pendingOrders,
       newUsers,
       activeProducts,
       newProducts,
-      conversionRate: totalOrders > 0 ? (completedOrders / totalOrders * 100).toFixed(1) : 0
+      conversionRate: totalOrders > 0 ? (confirmedOrders / totalOrders * 100).toFixed(1) : 0
     };
   };
 
@@ -99,7 +99,7 @@ const AdminReportsPage = () => {
     const csvContent = `Metric,Value
 Total Revenue,${formatPrice(report.totalRevenue)}
 Total Orders,${report.totalOrders}
-Completed Orders,${report.completedOrders}
+Confirmed Orders,${report.confirmedOrders}
 Pending Orders,${report.pendingOrders}
 New Users,${report.newUsers}
 Active Products,${report.activeProducts}
@@ -260,12 +260,12 @@ Conversion Rate,${report.conversionRate}%`;
                   <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Completed</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">{report.completedOrders} orders</p>
+                  <p className="font-medium text-gray-900 dark:text-white">Confirmed</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{report.confirmedOrders} orders</p>
                 </div>
               </div>
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {report.totalOrders > 0 ? (report.completedOrders / report.totalOrders * 100).toFixed(1) : 0}%
+                {report.totalOrders > 0 ? (report.confirmedOrders / report.totalOrders * 100).toFixed(1) : 0}%
               </span>
             </div>
             
@@ -351,7 +351,7 @@ Conversion Rate,${report.conversionRate}%`;
                   {new Date(order.created_at).toLocaleDateString()}
                 </span>
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  order.status === 'completed' 
+                  order.status === 'confirmed' 
                     ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                     : order.status === 'pending'
                     ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'

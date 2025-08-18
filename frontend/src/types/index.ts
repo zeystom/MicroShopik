@@ -38,20 +38,10 @@ export interface Order {
   id: number
   customer_id?: number
   product_id?: number
-  product_item_id?: number
   product?: Product
-  product_item?: ProductItem
   status: string
   created_at: string
   updated_at: string
-}
-
-export interface ProductItem {
-  id: number
-  product_id: number
-  product?: Product
-  is_available: boolean
-  created_at: string
 }
 
 export interface Message {

@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"MicroShopik/internal/domain"
-	"MicroShopik/internal/services"
+	"MicroShopik/internal/services/application"
 	"net/http"
 	"strconv"
 
@@ -10,11 +10,11 @@ import (
 )
 
 type ConversationController struct {
-	conversationService services.ConversationService
+	conversationAppService *application.ConversationApplicationService
 }
 
-func NewConversationController(s services.ConversationService) *ConversationController {
-	return &ConversationController{conversationService: s}
+func NewConversationController(s *application.ConversationApplicationService) *ConversationController {
+	return &ConversationController{conversationAppService: s}
 }
 
 // Create @Summary Create a new conversation
@@ -46,7 +46,7 @@ func (cc *ConversationController) Create(c echo.Context) error {
 		request.Conversation.ProductID = request.ProductID
 	}
 
-	if err := cc.conversationService.Create(&request.Conversation, request.ParticipantIDs); err != nil {
+	if err := cc.conversationAppService.CreateConversationWithParticipants(&request.Conversation, request.ParticipantIDs, request.ProductID); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -68,12 +68,18 @@ func (cc *ConversationController) GetByID(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid conversation id"})
 	}
 
-	conversation, err := cc.conversationService.GetByID(id)
+	userID := c.Get("user_id").(int)
+	conversation, messages, err := cc.conversationAppService.GetConversationWithMessages(id, userID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, conversation)
+	response := map[string]interface{}{
+		"conversation": conversation,
+		"messages":     messages,
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 // GetByUserID @Summary Get conversations by user ID
@@ -90,7 +96,7 @@ func (cc *ConversationController) GetByUserID(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user id"})
 	}
 
-	conversations, err := cc.conversationService.GetByUserID(userID)
+	conversations, err := cc.conversationAppService.GetUserConversationsWithLastMessage(userID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -112,7 +118,7 @@ func (cc *ConversationController) GetByProductID(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid product id"})
 	}
 
-	conversations, err := cc.conversationService.GetByProductID(productID)
+	conversations, err := cc.conversationAppService.GetConversationsByProductID(productID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -145,7 +151,7 @@ func (cc *ConversationController) Update(c echo.Context) error {
 	}
 
 	conversation.ID = id
-	if err := cc.conversationService.Update(&conversation); err != nil {
+	if err := cc.conversationAppService.UpdateConversation(&conversation); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -169,7 +175,7 @@ func (cc *ConversationController) Delete(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid conversation id"})
 	}
 
-	if err := cc.conversationService.Delete(id); err != nil {
+	if err := cc.conversationAppService.DeleteConversation(id); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -198,7 +204,7 @@ func (cc *ConversationController) AddParticipant(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user id"})
 	}
 
-	if err := cc.conversationService.AddParticipant(conversationID, userID); err != nil {
+	if err := cc.conversationAppService.AddParticipantToConversation(conversationID, userID); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -227,7 +233,7 @@ func (cc *ConversationController) RemoveParticipant(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user id"})
 	}
 
-	if err := cc.conversationService.RemoveParticipant(conversationID, userID); err != nil {
+	if err := cc.conversationAppService.RemoveParticipantFromConversation(conversationID, userID); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 

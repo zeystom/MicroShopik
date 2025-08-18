@@ -34,7 +34,6 @@ func InitDB(cfg *configs.Config) error {
 		&domain.Conversation{},
 		&domain.Message{},
 		&domain.Participant{},
-		&domain.ProductItem{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
