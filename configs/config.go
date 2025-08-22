@@ -16,10 +16,9 @@ type Config struct {
 	DBName     string `json:"DBName"`
 	JWTSecret  string `json:"-"`
 
-	// Keep-alive configuration
 	KeepAliveEnabled  bool   `json:"KeepAliveEnabled"`
 	KeepAliveURL      string `json:"KeepAliveURL"`
-	KeepAliveInterval int    `json:"KeepAliveInterval"` // in minutes
+	KeepAliveInterval int    `json:"KeepAliveInterval"`
 }
 
 func Load() (*Config, error) {
@@ -37,7 +36,6 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("DB_PASSWORD environment variable is required")
 	}
 
-	// Keep-alive configuration
 	keepAliveEnabled := getEnv("KEEP_ALIVE_ENABLED", "true") == "true"
 	keepAliveURL := getEnv("KEEP_ALIVE_URL", "http://localhost:8080")
 	keepAliveInterval, err := strconv.Atoi(getEnv("KEEP_ALIVE_INTERVAL", "10"))

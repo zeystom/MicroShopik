@@ -85,13 +85,13 @@ const ProductDetailPage: React.FC = () => {
       // Create conversation between buyer and seller
       try {
         const conversation = await apiService.createConversation(
-          {},
+          { product_id: product.id },
           [user?.id as number, product.seller_id]
         )
         // Send auto message from seller about purchase
         try {
           await apiService.sendMessage(conversation.id, {
-            text: `Purchase: ${product.title}`,
+            text: `Purchase: "${product.title}"`,
             sender_id: product.seller_id,
             order_id: order.id,
           })

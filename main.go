@@ -65,7 +65,6 @@ func main() {
 
 	setupErrorHandler(e)
 
-	// Start periodic keep-alive pings to prevent idle shutdowns
 	if cfg.KeepAliveEnabled {
 		interval := time.Duration(cfg.KeepAliveInterval) * time.Minute
 		ka := keepalive.NewKeepAliveService(cfg.KeepAliveURL, interval)

@@ -50,6 +50,23 @@ class ApiService {
     );
   }
 
+  // Normalize server message shape (content -> text)
+  private mapMessageFromServer = (m: any) => {
+    if (!m) return m;
+    if (m.text == null && m.content != null) {
+      return { ...m, text: m.content };
+    }
+    return m;
+  };
+
+  private mapConversationFromServer = (c: any) => {
+    if (!c) return c;
+    if (Array.isArray(c.messages)) {
+      return { ...c, messages: c.messages.map(this.mapMessageFromServer) };
+    }
+    return c;
+  };
+
   // Auth endpoints
   async login(credentials: { email: string; password: string }) {
     const response = await this.api.post('/auth/login', credentials);
@@ -229,12 +246,24 @@ class ApiService {
     const currentUserId = useAuthStore.getState().user?.id;
     if (!currentUserId) throw new Error('User not authenticated');
     const response = await this.api.get(`/users/${currentUserId}/conversations`);
-    return response.data;
+    const data = response.data;
+    if (Array.isArray(data)) {
+      return data.map(this.mapConversationFromServer);
+    }
+    return data;
   }
 
   async getConversation(id: number) {
     const response = await this.api.get(`/conversations/${id}`);
-    return response.data;
+    const data = response.data;
+    // Some endpoints return { conversation, messages }
+    if (data && data.conversation && data.messages) {
+      return {
+        conversation: this.mapConversationFromServer(data.conversation),
+        messages: Array.isArray(data.messages) ? data.messages.map(this.mapMessageFromServer) : data.messages,
+      };
+    }
+    return this.mapConversationFromServer(data);
   }
 
   async createConversation(conversationData: Partial<Conversation>, participantIds: number[]) {
@@ -248,13 +277,14 @@ class ApiService {
   // Message endpoints
   async getMessages(conversationId: number) {
     const response = await this.api.get(`/conversations/${conversationId}/messages`);
-    return response.data;
+    const data = response.data;
+    return Array.isArray(data) ? data.map(this.mapMessageFromServer) : data;
   }
 
   async sendMessage(conversationId: number, messageData: { text: string; sender_id: number; order_id?: number }) {
     const response = await this.api.post(`/conversations/${conversationId}/messages`, {
       conversation_id: conversationId,
-      text: messageData.text,
+      content: messageData.text, // backend expects `content`
       sender_id: messageData.sender_id,
       order_id: messageData.order_id,
     });
